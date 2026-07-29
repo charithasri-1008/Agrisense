@@ -4,10 +4,11 @@ import { Toaster } from "react-hot-toast";
 
 import App from "./App";
 import "./index.css";
+import { SettingsProvider } from "./context/SettingsContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <>
+    <SettingsProvider>
       <Toaster
         position="top-right"
         toastOptions={{
@@ -19,7 +20,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           },
         }}
       />
+
       <App />
-    </>
+    </SettingsProvider>
   </React.StrictMode>
 );

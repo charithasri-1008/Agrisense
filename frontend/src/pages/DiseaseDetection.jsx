@@ -1,168 +1,632 @@
-import { useState } from "react";
-import { detectDisease } from "../services/diseaseService";
-import LoadingSpinner from "../components/LoadingSpinner";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import toast from "react-hot-toast";
 
+import { detectDisease } from "../services/diseaseService";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { speakText } from "../utils/speech";
+import { useSettings } from "../context/SettingsContext";
+
+const translations = {
+  "en-IN": {
+    pageTitle: "AI Disease Detection",
+    subtitle:
+      "Upload a crop leaf image and let AI detect possible diseases.",
+
+    uploadLabel: "Upload Crop Image",
+    previewAlt: "Selected crop preview",
+
+    detectDisease: "Detect Disease",
+    detectingDisease: "Analyzing Image...",
+
+    emptyTitle: "AI Plant Doctor",
+    emptyDescription:
+      "Upload a crop leaf image to detect possible diseases.",
+
+    resultTitle: "Detection Result",
+    disease: "Disease",
+    confidence: "Confidence",
+    cause: "Cause",
+    symptoms: "Symptoms",
+    treatment: "Treatment",
+    prevention: "Prevention",
+    aiSummary: "AI Summary",
+
+    listen: "Listen",
+    stop: "Stop",
+    voiceOff: "Voice Off",
+
+    selectImage: "Please select a crop image",
+    invalidImage:
+      "Please select a valid image file",
+    largeImage:
+      "Image size must be below 5 MB",
+    analysisCompleted:
+      "Disease analysis completed",
+    detectionFailed:
+      "Disease detection failed",
+    noSummary:
+      "No voice summary is available",
+    voiceDisabled:
+      "Voice responses are turned off in Profile settings",
+  },
+
+  "te-IN": {
+    pageTitle: "AI పంట వ్యాధి గుర్తింపు",
+    subtitle:
+      "పంట ఆకు చిత్రాన్ని అప్‌లోడ్ చేసి సంభావ్య వ్యాధులను AI ద్వారా గుర్తించండి.",
+
+    uploadLabel: "పంట చిత్రాన్ని అప్‌లోడ్ చేయండి",
+    previewAlt: "ఎంచుకున్న పంట చిత్రం",
+
+    detectDisease: "వ్యాధిని గుర్తించండి",
+    detectingDisease: "చిత్రాన్ని పరిశీలిస్తోంది...",
+
+    emptyTitle: "AI మొక్కల వైద్యుడు",
+    emptyDescription:
+      "పంట ఆకులో ఉన్న వ్యాధిని గుర్తించడానికి చిత్రాన్ని అప్‌లోడ్ చేయండి.",
+
+    resultTitle: "గుర్తింపు ఫలితం",
+    disease: "వ్యాధి",
+    confidence: "నమ్మక స్థాయి",
+    cause: "కారణం",
+    symptoms: "లక్షణాలు",
+    treatment: "చికిత్స",
+    prevention: "నివారణ",
+    aiSummary: "AI సారాంశం",
+
+    listen: "వినండి",
+    stop: "ఆపండి",
+    voiceOff: "వాయిస్ ఆఫ్",
+
+    selectImage:
+      "దయచేసి పంట చిత్రాన్ని ఎంచుకోండి",
+    invalidImage:
+      "సరైన ఇమేజ్ ఫైల్‌ను ఎంచుకోండి",
+    largeImage:
+      "చిత్ర పరిమాణం 5 MB కంటే తక్కువగా ఉండాలి",
+    analysisCompleted:
+      "వ్యాధి విశ్లేషణ పూర్తైంది",
+    detectionFailed:
+      "వ్యాధిని గుర్తించడం విఫలమైంది",
+    noSummary:
+      "వినడానికి సారాంశం అందుబాటులో లేదు",
+    voiceDisabled:
+      "ప్రొఫైల్ సెట్టింగ్స్‌లో వాయిస్ స్పందనలు ఆఫ్‌లో ఉన్నాయి",
+  },
+
+  "hi-IN": {
+    pageTitle: "AI फसल रोग पहचान",
+    subtitle:
+      "फसल की पत्ती की तस्वीर अपलोड करें और AI से संभावित रोग पहचानें।",
+
+    uploadLabel: "फसल की तस्वीर अपलोड करें",
+    previewAlt: "चुनी गई फसल की तस्वीर",
+
+    detectDisease: "रोग पहचानें",
+    detectingDisease: "तस्वीर का विश्लेषण हो रहा है...",
+
+    emptyTitle: "AI पौधा चिकित्सक",
+    emptyDescription:
+      "फसल रोग पहचानने के लिए पत्ती की तस्वीर अपलोड करें।",
+
+    resultTitle: "पहचान परिणाम",
+    disease: "रोग",
+    confidence: "विश्वास स्तर",
+    cause: "कारण",
+    symptoms: "लक्षण",
+    treatment: "उपचार",
+    prevention: "रोकथाम",
+    aiSummary: "AI सारांश",
+
+    listen: "सुनें",
+    stop: "रोकें",
+    voiceOff: "आवाज़ बंद",
+
+    selectImage:
+      "कृपया फसल की तस्वीर चुनें",
+    invalidImage:
+      "कृपया सही इमेज फ़ाइल चुनें",
+    largeImage:
+      "तस्वीर का आकार 5 MB से कम होना चाहिए",
+    analysisCompleted:
+      "रोग विश्लेषण पूरा हुआ",
+    detectionFailed:
+      "रोग पहचान विफल रही",
+    noSummary:
+      "कोई आवाज़ सारांश उपलब्ध नहीं है",
+    voiceDisabled:
+      "प्रोफाइल सेटिंग्स में आवाज़ प्रतिक्रियाएं बंद हैं",
+  },
+
+  "ta-IN": {
+    pageTitle: "AI பயிர் நோய் கண்டறிதல்",
+    subtitle:
+      "பயிர் இலைப் படத்தை பதிவேற்றி சாத்தியமான நோய்களை AI மூலம் கண்டறியுங்கள்.",
+
+    uploadLabel: "பயிர் படத்தை பதிவேற்றவும்",
+    previewAlt: "தேர்ந்தெடுக்கப்பட்ட பயிர் படம்",
+
+    detectDisease: "நோயைக் கண்டறியவும்",
+    detectingDisease: "படம் ஆய்வு செய்யப்படுகிறது...",
+
+    emptyTitle: "AI தாவர மருத்துவர்",
+    emptyDescription:
+      "பயிர் நோயைக் கண்டறிய இலைப் படத்தை பதிவேற்றவும்.",
+
+    resultTitle: "கண்டறிதல் முடிவு",
+    disease: "நோய்",
+    confidence: "நம்பிக்கை அளவு",
+    cause: "காரணம்",
+    symptoms: "அறிகுறிகள்",
+    treatment: "சிகிச்சை",
+    prevention: "தடுப்பு",
+    aiSummary: "AI சுருக்கம்",
+
+    listen: "கேட்க",
+    stop: "நிறுத்து",
+    voiceOff: "குரல் முடக்கம்",
+
+    selectImage:
+      "பயிர் படத்தைத் தேர்ந்தெடுக்கவும்",
+    invalidImage:
+      "சரியான படக் கோப்பைத் தேர்ந்தெடுக்கவும்",
+    largeImage:
+      "படத்தின் அளவு 5 MB-க்கு கீழ் இருக்க வேண்டும்",
+    analysisCompleted:
+      "நோய் ஆய்வு முடிந்தது",
+    detectionFailed:
+      "நோயைக் கண்டறிய முடியவில்லை",
+    noSummary:
+      "குரல் சுருக்கம் கிடைக்கவில்லை",
+    voiceDisabled:
+      "சுயவிவர அமைப்புகளில் குரல் பதில்கள் முடக்கப்பட்டுள்ளன",
+  },
+
+  "kn-IN": {
+    pageTitle: "AI ಬೆಳೆ ರೋಗ ಪತ್ತೆ",
+    subtitle:
+      "ಬೆಳೆ ಎಲೆಯ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ AI ಮೂಲಕ ಸಾಧ್ಯವಾದ ರೋಗಗಳನ್ನು ಪತ್ತೆಹಚ್ಚಿ.",
+
+    uploadLabel: "ಬೆಳೆ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+    previewAlt: "ಆಯ್ಕೆ ಮಾಡಿದ ಬೆಳೆ ಚಿತ್ರ",
+
+    detectDisease: "ರೋಗ ಪತ್ತೆ ಮಾಡಿ",
+    detectingDisease: "ಚಿತ್ರವನ್ನು ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...",
+
+    emptyTitle: "AI ಸಸ್ಯ ವೈದ್ಯ",
+    emptyDescription:
+      "ಬೆಳೆ ರೋಗ ಪತ್ತೆ ಮಾಡಲು ಎಲೆಯ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+
+    resultTitle: "ಪತ್ತೆ ಫಲಿತಾಂಶ",
+    disease: "ರೋಗ",
+    confidence: "ವಿಶ್ವಾಸ ಮಟ್ಟ",
+    cause: "ಕಾರಣ",
+    symptoms: "ಲಕ್ಷಣಗಳು",
+    treatment: "ಚಿಕಿತ್ಸೆ",
+    prevention: "ತಡೆಗಟ್ಟುವಿಕೆ",
+    aiSummary: "AI ಸಾರಾಂಶ",
+
+    listen: "ಆಲಿಸಿ",
+    stop: "ನಿಲ್ಲಿಸಿ",
+    voiceOff: "ಧ್ವನಿ ಆಫ್",
+
+    selectImage:
+      "ದಯವಿಟ್ಟು ಬೆಳೆ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ",
+    invalidImage:
+      "ಸರಿಯಾದ ಚಿತ್ರ ಫೈಲ್ ಆಯ್ಕೆ ಮಾಡಿ",
+    largeImage:
+      "ಚಿತ್ರದ ಗಾತ್ರ 5 MB ಕ್ಕಿಂತ ಕಡಿಮೆ ಇರಬೇಕು",
+    analysisCompleted:
+      "ರೋಗ ವಿಶ್ಲೇಷಣೆ ಪೂರ್ಣಗೊಂಡಿದೆ",
+    detectionFailed:
+      "ರೋಗ ಪತ್ತೆ ವಿಫಲವಾಗಿದೆ",
+    noSummary:
+      "ಧ್ವನಿ ಸಾರಾಂಶ ಲಭ್ಯವಿಲ್ಲ",
+    voiceDisabled:
+      "ಪ್ರೊಫೈಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಧ್ವನಿ ಪ್ರತಿಕ್ರಿಯೆಗಳು ಆಫ್ ಆಗಿವೆ",
+  },
+
+  "ml-IN": {
+    pageTitle: "AI വിള രോഗനിർണയം",
+    subtitle:
+      "വിളയുടെ ഇലയുടെ ചിത്രം അപ്‌ലോഡ് ചെയ്ത് സാധ്യതയുള്ള രോഗങ്ങൾ AI ഉപയോഗിച്ച് കണ്ടെത്തുക.",
+
+    uploadLabel: "വിളയുടെ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക",
+    previewAlt: "തിരഞ്ഞെടുത്ത വിളയുടെ ചിത്രം",
+
+    detectDisease: "രോഗം കണ്ടെത്തുക",
+    detectingDisease: "ചിത്രം പരിശോധിക്കുന്നു...",
+
+    emptyTitle: "AI സസ്യ ഡോക്ടർ",
+    emptyDescription:
+      "വിളയിലെ രോഗം കണ്ടെത്താൻ ഇലയുടെ ചിത്രം അപ്‌ലോഡ് ചെയ്യുക.",
+
+    resultTitle: "രോഗനിർണയ ഫലം",
+    disease: "രോഗം",
+    confidence: "വിശ്വാസനില",
+    cause: "കാരണം",
+    symptoms: "ലക്ഷണങ്ങൾ",
+    treatment: "ചികിത്സ",
+    prevention: "പ്രതിരോധം",
+    aiSummary: "AI സംഗ്രഹം",
+
+    listen: "കേൾക്കുക",
+    stop: "നിർത്തുക",
+    voiceOff: "ശബ്ദം ഓഫ്",
+
+    selectImage:
+      "ദയവായി വിളയുടെ ചിത്രം തിരഞ്ഞെടുക്കുക",
+    invalidImage:
+      "ശരിയായ ചിത്രം തിരഞ്ഞെടുക്കുക",
+    largeImage:
+      "ചിത്രത്തിന്റെ വലുപ്പം 5 MB-ൽ താഴെയായിരിക്കണം",
+    analysisCompleted:
+      "രോഗ വിശകലനം പൂർത്തിയായി",
+    detectionFailed:
+      "രോഗനിർണയം പരാജയപ്പെട്ടു",
+    noSummary:
+      "ശബ്ദ സംഗ്രഹം ലഭ്യമല്ല",
+    voiceDisabled:
+      "പ്രൊഫൈൽ ക്രമീകരണങ്ങളിൽ ശബ്ദ പ്രതികരണങ്ങൾ ഓഫ് ആണ്",
+  },
+};
+
+const MAX_IMAGE_SIZE =
+  5 * 1024 * 1024;
+
 function DiseaseDetection() {
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [image, setImage] =
+    useState(null);
 
-  const handleImage = (e) => {
-    const file = e.target.files[0];
+  const [preview, setPreview] =
+    useState(null);
 
-    if (!file) return;
+  const [result, setResult] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const {
+    language,
+    voiceResponsesEnabled,
+  } = useSettings();
+
+  const text = useMemo(() => {
+    return (
+      translations[language] ||
+      translations["en-IN"]
+    );
+  }, [language]);
+
+  useEffect(() => {
+    window.speechSynthesis?.cancel();
+    setResult(null);
+  }, [language]);
+
+  useEffect(() => {
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+
+      window.speechSynthesis?.cancel();
+    };
+  }, [preview]);
+
+  const handleImage = (event) => {
+    const file =
+      event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (
+      !file.type.startsWith("image/")
+    ) {
+      toast.error(text.invalidImage);
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error(text.largeImage);
+      event.target.value = "";
+      return;
+    }
+
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+
+    const previewUrl =
+      URL.createObjectURL(file);
 
     setImage(file);
-    setPreview(URL.createObjectURL(file));
+    setPreview(previewUrl);
     setResult(null);
+
+    window.speechSynthesis?.cancel();
   };
 
   const handleUpload = async () => {
     if (!image) {
-      toast.error("Please select a crop image");
+      toast.error(text.selectImage);
       return;
     }
 
     try {
       setLoading(true);
+      setResult(null);
 
-      const res = await detectDisease(image);
+      window.speechSynthesis?.cancel();
 
-      setResult(res.result);
+      const response =
+        await detectDisease(
+          image,
+          language
+        );
 
-      toast.success("Disease Analysis Completed 🌿");
-    } catch (err) {
-      console.log(err);
+      const diseaseResult =
+        response?.result ||
+        response;
 
-      toast.error("Disease Detection Failed");
+      setResult(diseaseResult);
+
+      toast.success(
+        text.analysisCompleted
+      );
+
+      if (
+        voiceResponsesEnabled &&
+        diseaseResult?.narration
+      ) {
+        speakText(
+          diseaseResult.narration,
+          language
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Disease detection error:",
+        error
+      );
+
+      toast.error(
+        error?.response?.data?.message ||
+          text.detectionFailed
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-lime-50 to-yellow-50 p-8">
+  const handleListen = () => {
+    if (!voiceResponsesEnabled) {
+      toast.error(text.voiceDisabled);
+      return;
+    }
 
-      <h1 className="text-5xl font-bold text-center text-green-700 mb-3">
-        🌿 AI Disease Detection
+    if (!result?.narration) {
+      toast.error(text.noSummary);
+      return;
+    }
+
+    window.speechSynthesis?.cancel();
+
+    speakText(
+      result.narration,
+      language
+    );
+  };
+
+  const handleStopReading = () => {
+    window.speechSynthesis?.cancel();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-lime-50 to-yellow-50 p-4 sm:p-8">
+      <h1 className="mb-3 text-center text-3xl font-bold text-green-700 sm:text-5xl">
+        🌿 {text.pageTitle}
       </h1>
 
-      <p className="text-center text-gray-600 mb-10">
-        Upload a crop leaf image and let AI detect possible diseases.
+      <p className="mb-10 text-center text-gray-600">
+        {text.subtitle}
       </p>
 
-      <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl p-10">
-
-        <label className="block font-semibold text-gray-700 mb-3">
-          Upload Crop Image
+      <div className="mx-auto max-w-2xl rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
+        <label
+          htmlFor="cropImage"
+          className="mb-3 block font-semibold text-gray-700"
+        >
+          {text.uploadLabel}
         </label>
 
         <input
+          id="cropImage"
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/jpg,image/webp"
           onChange={handleImage}
-          className="w-full border-2 border-green-300 rounded-xl p-3"
+          disabled={loading}
+          className="w-full rounded-xl border-2 border-green-300 p-3 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
         {preview && (
           <div className="mt-8 flex justify-center">
-
             <img
               src={preview}
-              alt="Preview"
-              className="w-72 h-72 object-cover rounded-2xl shadow-lg border-4 border-green-200"
+              alt={text.previewAlt}
+              className="h-72 w-72 rounded-2xl border-4 border-green-200 object-cover shadow-lg"
             />
-
           </div>
         )}
 
         <button
+          type="button"
           onClick={handleUpload}
-          className="mt-8 w-full bg-green-600 hover:bg-green-700 transition text-white py-4 rounded-xl font-bold"
+          disabled={loading || !image}
+          className="mt-8 w-full rounded-xl bg-green-600 py-4 font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          🔍 Detect Disease
+          {loading
+            ? text.detectingDisease
+            : `🔍 ${text.detectDisease}`}
         </button>
-
       </div>
 
       {loading && <LoadingSpinner />}
 
       {!loading && !result && (
-        <div className="text-center mt-16">
-
+        <div className="mt-16 text-center">
           <div className="text-7xl">
             🌱
           </div>
 
-          <h2 className="text-2xl font-bold mt-4 text-gray-700">
-            AI Plant Doctor
+          <h2 className="mt-4 text-2xl font-bold text-gray-700">
+            {text.emptyTitle}
           </h2>
 
-          <p className="text-gray-500 mt-2">
-            Upload a crop leaf image to detect diseases instantly.
+          <p className="mt-2 text-gray-500">
+            {text.emptyDescription}
           </p>
-
         </div>
       )}
 
       {!loading && result && (
-
-        <div className="max-w-3xl mx-auto mt-10 bg-white rounded-3xl shadow-2xl p-10">
-
-          <h2 className="text-4xl font-bold text-center text-green-700 mb-8">
-            🌾 Detection Result
+        <div className="mx-auto mt-10 max-w-3xl rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
+          <h2 className="mb-8 text-center text-3xl font-bold text-green-700 sm:text-4xl">
+            🌾 {text.resultTitle}
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-5">
-
-            <div className="bg-green-50 rounded-2xl p-5">
-              <h3 className="font-bold text-green-700 mb-2">
-                🌿 Disease
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="rounded-2xl bg-green-50 p-5">
+              <h3 className="mb-2 font-bold text-green-700">
+                🌿 {text.disease}
               </h3>
 
-              <p>{result.disease}</p>
+              <p className="leading-7">
+                {result.disease}
+              </p>
             </div>
 
-            <div className="bg-blue-50 rounded-2xl p-5">
-              <h3 className="font-bold text-blue-700 mb-2">
-                📊 Confidence
+            <div className="rounded-2xl bg-blue-50 p-5">
+              <h3 className="mb-2 font-bold text-blue-700">
+                📊 {text.confidence}
               </h3>
 
-              <p>{result.confidence}</p>
+              <p className="leading-7">
+                {result.confidence}
+              </p>
             </div>
 
-            <div className="bg-yellow-50 rounded-2xl p-5 md:col-span-2">
-              <h3 className="font-bold text-yellow-700 mb-2">
-                🔍 Cause
+            <div className="rounded-2xl bg-yellow-50 p-5 md:col-span-2">
+              <h3 className="mb-2 font-bold text-yellow-700">
+                🔍 {text.cause}
               </h3>
 
-              <p>{result.cause}</p>
+              <p className="whitespace-pre-wrap leading-8">
+                {result.cause}
+              </p>
             </div>
 
-            <div className="bg-red-50 rounded-2xl p-5 md:col-span-2">
-              <h3 className="font-bold text-red-700 mb-2">
-                💊 Treatment
+            {result.symptoms && (
+              <div className="rounded-2xl bg-orange-50 p-5 md:col-span-2">
+                <h3 className="mb-2 font-bold text-orange-700">
+                  🩺 {text.symptoms}
+                </h3>
+
+                {Array.isArray(
+                  result.symptoms
+                ) ? (
+                  <ul className="space-y-2">
+                    {result.symptoms.map(
+                      (symptom, index) => (
+                        <li
+                          key={`${index}-${symptom}`}
+                          className="flex gap-2"
+                        >
+                          <span>•</span>
+                          <span>
+                            {symptom}
+                          </span>
+                        </li>
+                      )
+                    )}
+                  </ul>
+                ) : (
+                  <p className="whitespace-pre-wrap leading-8">
+                    {result.symptoms}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="rounded-2xl bg-red-50 p-5 md:col-span-2">
+              <h3 className="mb-2 font-bold text-red-700">
+                💊 {text.treatment}
               </h3>
 
-              <p>{result.treatment}</p>
+              <p className="whitespace-pre-wrap leading-8">
+                {result.treatment}
+              </p>
             </div>
 
-            <div className="bg-green-100 rounded-2xl p-5 md:col-span-2">
-              <h3 className="font-bold text-green-800 mb-2">
-                🛡 Prevention
+            <div className="rounded-2xl bg-green-100 p-5 md:col-span-2">
+              <h3 className="mb-2 font-bold text-green-800">
+                🛡 {text.prevention}
               </h3>
 
-              <p>{result.prevention}</p>
+              <p className="whitespace-pre-wrap leading-8">
+                {result.prevention}
+              </p>
             </div>
-
           </div>
 
+          {result.narration && (
+            <div className="mt-6 rounded-2xl border-l-4 border-green-700 bg-green-100 p-5">
+              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-xl font-bold text-green-800">
+                  🔊 {text.aiSummary}
+                </h3>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={handleListen}
+                    disabled={
+                      !voiceResponsesEnabled
+                    }
+                    className="rounded-lg bg-green-600 px-5 py-2 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                  >
+                    {voiceResponsesEnabled
+                      ? `🔊 ${text.listen}`
+                      : `🔇 ${text.voiceOff}`}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleStopReading
+                    }
+                    className="rounded-lg bg-red-600 px-5 py-2 font-semibold text-white transition hover:bg-red-700"
+                  >
+                    ⏹ {text.stop}
+                  </button>
+                </div>
+              </div>
+
+              <p className="whitespace-pre-wrap leading-8">
+                {result.narration}
+              </p>
+            </div>
+          )}
         </div>
-
       )}
-
     </div>
   );
 }

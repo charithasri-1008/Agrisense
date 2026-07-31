@@ -320,9 +320,61 @@ const getLocalizedPlaceName = ({
   );
 };
 
+
+const createLocalizedWeatherSummary = (
+  language,
+  weatherData
+) => {
+  const city =
+    weatherData.localizedCity ||
+    weatherData.city ||
+    "Current Location";
+
+  const temperature =
+    weatherData.temperature ?? "N/A";
+
+  const humidity =
+    weatherData.humidity ?? "N/A";
+
+  const windSpeed =
+    weatherData.windSpeed ?? "N/A";
+
+  const summaries = {
+    "en-IN":
+      `${city} currently has a temperature of ${temperature}°C, ` +
+      `humidity of ${humidity}% and wind speed of ${windSpeed} m/s.`,
+
+    "te-IN":
+      `${city}లో ప్రస్తుతం ఉష్ణోగ్రత ${temperature}°C, ` +
+      `తేమ ${humidity}% మరియు గాలి వేగం ${windSpeed} m/s ఉంది.`,
+
+    "hi-IN":
+      `${city} में वर्तमान तापमान ${temperature}°C, ` +
+      `आर्द्रता ${humidity}% और हवा की गति ${windSpeed} m/s है।`,
+
+    "ta-IN":
+      `${city} இல் தற்போதைய வெப்பநிலை ${temperature}°C, ` +
+      `ஈரப்பதம் ${humidity}% மற்றும் காற்றின் வேகம் ${windSpeed} m/s ஆகும்.`,
+
+    "kn-IN":
+      `${city} ನಲ್ಲಿ ಪ್ರಸ್ತುತ ತಾಪಮಾನ ${temperature}°C, ` +
+      `ಆರ್ದ್ರತೆ ${humidity}% ಮತ್ತು ಗಾಳಿಯ ವೇಗ ${windSpeed} m/s ಇದೆ.`,
+
+    "ml-IN":
+      `${city} ൽ നിലവിലെ താപനില ${temperature}°C, ` +
+      `ഈർപ്പം ${humidity}% കൂടാതെ കാറ്റിന്റെ വേഗം ${windSpeed} m/s ആണ്.`,
+  };
+
+  return (
+    summaries[language] ||
+    summaries["en-IN"]
+  );
+};
+
 const createFallbackAdvice = (
   config,
-  weatherData
+  weatherData,
+  language
 ) => {
   const fallback =
     config.fallbackAdvice;
@@ -346,10 +398,10 @@ const createFallbackAdvice = (
       fallback.fieldWork,
 
     summary:
-      `${weatherData.localizedCity}లో/at current temperature is ` +
-      `${weatherData.temperature}°C, humidity is ` +
-      `${weatherData.humidity}% and wind speed is ` +
-      `${weatherData.windSpeed} m/s.`,
+      createLocalizedWeatherSummary(
+        language,
+        weatherData
+      ),
 
     fallback: true,
   };
@@ -455,6 +507,62 @@ const generateAdviceSafely = async ({
         error?.message
     );
 
+    return createFallbackAdvice(
+      config,
+      weatherData,
+      language
+    );
+  }
+};
+    const createLocalizedWeatherSummary = (
+  language,
+  weatherData
+) => {
+  const city =
+    weatherData.localizedCity ||
+    weatherData.city ||
+    "Current Location";
+
+  const temperature =
+    weatherData.temperature ?? "N/A";
+
+  const humidity =
+    weatherData.humidity ?? "N/A";
+
+  const windSpeed =
+    weatherData.windSpeed ?? "N/A";
+
+  const summaries = {
+    "en-IN":
+      `${city} currently has a temperature of ${temperature}°C, ` +
+      `humidity of ${humidity}% and wind speed of ${windSpeed} m/s.`,
+
+    "te-IN":
+      `${city}లో ప్రస్తుతం ఉష్ణోగ్రత ${temperature}°C, ` +
+      `తేమ ${humidity}% మరియు గాలి వేగం ${windSpeed} m/s ఉంది.`,
+
+    "hi-IN":
+      `${city} में वर्तमान तापमान ${temperature}°C, ` +
+      `आर्द्रता ${humidity}% और हवा की गति ${windSpeed} m/s है।`,
+
+    "ta-IN":
+      `${city} இல் தற்போதைய வெப்பநிலை ${temperature}°C, ` +
+      `ஈரப்பதம் ${humidity}% மற்றும் காற்றின் வேகம் ${windSpeed} m/s ஆகும்.`,
+
+    "kn-IN":
+      `${city} ನಲ್ಲಿ ಪ್ರಸ್ತುತ ತಾಪಮಾನ ${temperature}°C, ` +
+      `ಆರ್ದ್ರತೆ ${humidity}% ಮತ್ತು ಗಾಳಿಯ ವೇಗ ${windSpeed} m/s ಇದೆ.`,
+
+    "ml-IN":
+      `${city} ൽ നിലവിലെ താപനില ${temperature}°C, ` +
+      `ഈർപ്പം ${humidity}% കൂടാതെ കാറ്റിന്റെ വേഗം ${windSpeed} m/s ആണ്.`,
+  };
+
+  return (
+    summaries[language] ||
+    summaries["en-IN"]
+  );
+};
     return createFallbackAdvice(
       config,
       weatherData

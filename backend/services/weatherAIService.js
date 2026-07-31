@@ -1,10 +1,8 @@
-const {
-  GoogleGenerativeAI,
-} = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY
-);
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 const LANGUAGE_MAP = {
   "en-IN": "English",
@@ -28,16 +26,27 @@ const extractJson = (text) => {
     cleanedText.lastIndexOf("}");
 
   if (
-    firstBrace !== -1 &&
-    lastBrace !== -1
+    firstBrace === -1 ||
+    lastBrace === -1 ||
+    lastBrace <= firstBrace
   ) {
-    cleanedText = cleanedText.slice(
-      firstBrace,
-      lastBrace + 1
+    throw new Error(
+      `Groq did not return valid JSON. Raw response: ${cleanedText}`
     );
   }
 
-  return JSON.parse(cleanedText);
+  cleanedText = cleanedText.slice(
+    firstBrace,
+    lastBrace + 1
+  );
+
+  try {
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    throw new Error(
+      `Failed to parse Groq JSON response. Raw response: ${cleanedText}`
+    );
+  }
 };
 
 const validateAdvice = (advice) => {
@@ -62,26 +71,33 @@ const validateAdvice = (advice) => {
     }
   }
 
-  return advice;
+  return {
+    title: advice.title.trim(),
+    irrigation: advice.irrigation.trim(),
+    rainAlert: advice.rainAlert.trim(),
+    pesticide: advice.pesticide.trim(),
+    cropCare: advice.cropCare.trim(),
+    fieldWork: advice.fieldWork.trim(),
+    summary: advice.summary.trim(),
+  };
 };
 
 const generateWeatherAdvice = async (
   weather,
   language = "en-IN"
 ) => {
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     throw new Error(
-      "GEMINI_API_KEY is missing"
+      "GROQ_API_KEY is missing"
     );
   }
 
   const languageName =
     LANGUAGE_MAP[language] || "English";
 
-  const model =
-    genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-    });
+  const modelName =
+    process.env.GROQ_MODEL ||
+    "llama-3.3-70b-versatile";
 
   const prompt = `
 You are AgriSense AI, an expert agriculture advisor for Indian farmers.
@@ -128,11 +144,33 @@ Strict rules:
 `;
 
   try {
-    const result =
-      await model.generateContent(prompt);
+    const completion =
+      await groq.chat.completions.create({
+        model: modelName,
+        temperature: 0.2,
+        max_completion_tokens: 1200,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an agricultural weather advisor. Return strict JSON only.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      });
 
     const responseText =
-      result.response.text();
+      completion?.choices?.[0]
+        ?.message?.content || "";
+
+    if (!responseText.trim()) {
+      throw new Error(
+        "Groq returned an empty weather advice response."
+      );
+    }
 
     const parsedAdvice =
       extractJson(responseText);
@@ -140,8 +178,8 @@ Strict rules:
     return validateAdvice(parsedAdvice);
   } catch (error) {
     console.error(
-      "Weather AI service error:",
-      error.message
+      "Groq weather advice error:",
+      error?.message || error
     );
 
     throw error;

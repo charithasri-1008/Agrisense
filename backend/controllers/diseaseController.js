@@ -1,4 +1,6 @@
-const Groq = require("groq-sdk");
+const {
+  GoogleGenerativeAI,
+} = require("@google/generative-ai");
 
 /*
   Supported languages
@@ -13,7 +15,7 @@ const LANGUAGE_NAMES = {
 };
 
 /*
-  Extract JSON safely from Groq response
+  Extract JSON safely from Gemini response
 */
 const extractJson = (responseText) => {
   const cleanedText = String(responseText || "")
@@ -30,7 +32,7 @@ const extractJson = (responseText) => {
     lastBrace <= firstBrace
   ) {
     throw new Error(
-      `Groq did not return valid JSON. Raw response: ${cleanedText}`
+      `Gemini did not return valid JSON. Raw response: ${cleanedText}`
     );
   }
 
@@ -43,13 +45,13 @@ const extractJson = (responseText) => {
     return JSON.parse(jsonText);
   } catch (error) {
     throw new Error(
-      `Groq JSON parsing failed. Raw response: ${cleanedText}`
+      `Gemini JSON parsing failed. Raw response: ${cleanedText}`
     );
   }
 };
 
 /*
-  Validate string values
+  Validate normal string values
 */
 const getString = (
   value,
@@ -95,64 +97,11 @@ const getSymptoms = (value) => {
 };
 
 /*
-  Detect suitable HTTP status code
-*/
-const getErrorStatus = (error) => {
-  const errorMessage = String(
-    error?.message || ""
-  ).toLowerCase();
-
-  const directStatus = Number(
-    error?.status
-  );
-
-  if (
-    Number.isInteger(directStatus) &&
-    directStatus >= 400 &&
-    directStatus <= 599
-  ) {
-    return directStatus;
-  }
-
-  if (
-    errorMessage.includes("429") ||
-    errorMessage.includes("rate limit") ||
-    errorMessage.includes("quota")
-  ) {
-    return 429;
-  }
-
-  if (
-    errorMessage.includes("403") ||
-    errorMessage.includes("permission")
-  ) {
-    return 403;
-  }
-
-  if (
-    errorMessage.includes("401") ||
-    errorMessage.includes("api key") ||
-    errorMessage.includes("unauthorized")
-  ) {
-    return 401;
-  }
-
-  if (
-    errorMessage.includes("413") ||
-    errorMessage.includes("too large")
-  ) {
-    return 413;
-  }
-
-  return 500;
-};
-
-/*
   Disease detection controller
 */
 const detectDisease = async (req, res) => {
   console.log(
-    "========== GROQ DISEASE CONTROLLER RUNNING =========="
+    "========== NEW DISEASE CONTROLLER RUNNING =========="
   );
 
   try {
@@ -189,60 +138,20 @@ const detectDisease = async (req, res) => {
     }
 
     /*
-      Optional safety limit: 8 MB
-    */
-    const maximumImageSize =
-      8 * 1024 * 1024;
-
-    if (
-      req.file.buffer.length >
-      maximumImageSize
-    ) {
-      return res.status(413).json({
-        success: false,
-        error:
-          "Image is too large. Please upload an image smaller than 8 MB.",
-      });
-    }
-
-    /*
-      Step 2: Validate Groq API key
+      Step 2: Validate API key
     */
     const apiKey =
-      process.env.GROQ_API_KEY?.trim();
+      process.env.GEMINI_API_KEY?.trim();
 
     if (!apiKey) {
       return res.status(500).json({
         success: false,
         error:
-          "GROQ_API_KEY is missing in the backend environment variables.",
+          "GEMINI_API_KEY is missing in the backend environment variables.",
       });
     }
 
-    /*
-      The selected Groq model must support image input.
-      Set this value in Railway variables.
-    */
-    const modelName =
-      process.env.GROQ_VISION_MODEL?.trim();
-
-    if (!modelName) {
-      return res.status(500).json({
-        success: false,
-        error:
-          "GROQ_VISION_MODEL is missing. Add a Groq model that supports image input.",
-      });
-    }
-
-    console.log(
-      "Groq API key loaded:",
-      true
-    );
-
-    console.log(
-      "Groq vision model:",
-      modelName
-    );
+    console.log("Gemini API key loaded:", true);
 
     /*
       Step 3: Select language
@@ -259,31 +168,46 @@ const detectDisease = async (req, res) => {
       LANGUAGE_NAMES[selectedLanguage];
 
     /*
-      Step 4: Prepare image as a data URL
+      Step 4: Create Gemini client
     */
-    const base64Image =
-      req.file.buffer.toString("base64");
-
-    const imageDataUrl =
-      `data:${req.file.mimetype};base64,${base64Image}`;
-
-    console.log(
-      "Uploaded image details:",
-      {
-        originalName:
-          req.file.originalname,
-        mimeType:
-          req.file.mimetype,
-        size:
-          req.file.size,
-      }
+    const genAI = new GoogleGenerativeAI(
+      apiKey
     );
 
+    const modelName =
+      process.env.GEMINI_MODEL ||
+      "gemini-2.5-flash";
+
+    console.log(
+      "Gemini model:",
+      modelName
+    );
+
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 1800,
+      },
+    });
+
     /*
-      Step 5: Create Groq client
+      Step 5: Prepare image
     */
-    const groq = new Groq({
-      apiKey,
+    const imagePart = {
+      inlineData: {
+        data: req.file.buffer.toString(
+          "base64"
+        ),
+        mimeType: req.file.mimetype,
+      },
+    };
+
+    console.log("Uploaded image details:", {
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
     });
 
     /*
@@ -292,122 +216,104 @@ const detectDisease = async (req, res) => {
     const prompt = `
 You are AgriSense AI, an Indian crop disease analysis assistant.
 
-Carefully inspect the uploaded crop, plant, leaf, fruit, stem, or field image.
+Carefully analyze the actual uploaded crop, plant, leaf, fruit, stem, or field image.
 
 Required response language:
 ${languageName}
 
-Return only one valid JSON object.
+Return ONLY one valid JSON object.
 
-Do not use markdown.
+Do not write markdown.
 Do not use code blocks.
-Do not add text before or after the JSON.
+Do not write any explanation before or after the JSON.
 
 Use exactly this JSON structure:
 
 {
   "disease": "Detected disease name or visible crop problem",
   "confidence": "Realistic confidence percentage",
-  "cause": "Likely cause of the visible problem",
+  "cause": "Likely cause of the problem",
   "symptoms": [
     "Visible symptom 1",
     "Visible symptom 2",
     "Visible symptom 3"
   ],
   "treatment": "Safe and practical treatment guidance",
-  "prevention": "Practical prevention guidance",
+  "prevention": "Prevention guidance",
   "narration": "Short farmer-friendly spoken summary"
 }
 
 Strict rules:
 
-1. Write all JSON values in ${languageName}.
-2. Keep all JSON property names in English.
+1. Write all user-facing JSON values in ${languageName}.
+2. Keep JSON property names in English.
 3. Analyze only what is visible in the uploaded image.
-4. Do not invent a disease when the evidence is unclear.
-5. When uncertain, mention uncertainty clearly.
-6. If the image is not related to a crop or plant, state that crop disease identification is not possible.
+4. Do not invent a disease when the image evidence is unclear.
+5. If identification is uncertain, clearly mention that in the disease and confidence values.
+6. If the uploaded image is not related to a plant or crop, state that crop disease identification is not possible.
 7. Confidence must be realistic and must not automatically be 100%.
-8. Include up to three short visible symptoms.
-9. Give safe and farmer-friendly guidance.
+8. Include exactly three short visible symptoms whenever possible.
+9. Give safe, practical, farmer-friendly guidance.
 10. Do not recommend banned, restricted, or highly hazardous pesticides.
 11. Do not provide exact pesticide dosage.
-12. State that products must be used according to their label and local agriculture officer guidance.
-13. Recommend agriculture officer or laboratory confirmation when identification is uncertain.
+12. State that pesticide products must be used according to their label and local agriculture officer guidance.
+13. Mention agriculture officer or laboratory confirmation when the disease is uncertain.
 14. Do not stop sentences halfway.
 15. Return valid JSON only.
 `;
 
     /*
-      Step 7: Send prompt and image to Groq
+      Step 7: Send image and prompt to Gemini
     */
-    const completion =
-      await groq.chat.completions.create({
-        model: modelName,
-
-        temperature: 0.2,
-
-        max_completion_tokens: 1800,
-
-        messages: [
-          {
-            role: "system",
-            content:
-              "You analyze agricultural images carefully and return strict JSON only.",
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: prompt,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageDataUrl,
-                },
-              },
-            ],
-          },
-        ],
-      });
+    const result =
+      await model.generateContent([
+        imagePart,
+        {
+          text: prompt,
+        },
+      ]);
 
     /*
-      Step 8: Read Groq response
+      Step 8: Inspect Gemini response
     */
-    const responseText =
-      completion?.choices?.[0]
-        ?.message?.content || "";
+    const candidate =
+      result?.response?.candidates?.[0];
 
     const finishReason =
-      completion?.choices?.[0]
-        ?.finish_reason || "unknown";
+      candidate?.finishReason || "UNKNOWN";
 
     console.log(
-      "Groq finish reason:",
+      "Gemini finish reason:",
       finishReason
     );
 
     console.log(
-      "Groq raw response:",
+      "Gemini safety ratings:",
+      candidate?.safetyRatings || []
+    );
+
+    const responseText =
+      result?.response?.text?.() || "";
+
+    console.log(
+      "Gemini raw response:",
       responseText
     );
 
     if (!responseText.trim()) {
       throw new Error(
-        `Groq returned an empty response. Finish reason: ${finishReason}`
+        `Gemini returned an empty response. Finish reason: ${finishReason}`
       );
     }
 
     /*
-      Step 9: Parse JSON
+      Step 9: Convert Gemini response to JSON
     */
     const aiData =
       extractJson(responseText);
 
     /*
-      Step 10: Validate output
+      Step 10: Validate final output
     */
     const finalResult = {
       disease: getString(
@@ -417,7 +323,7 @@ Strict rules:
 
       confidence: getString(
         aiData.confidence,
-        "Low confidence"
+        "Low"
       ),
 
       cause: getString(
@@ -441,28 +347,32 @@ Strict rules:
 
       narration: getString(
         aiData.narration,
-        "The crop image analysis has been completed."
+        "The image analysis has been completed."
       ),
 
       fallback: false,
     };
 
     /*
-      Step 11: Send response
+      Step 11: Send successful response
     */
     return res.status(200).json({
       success: true,
       language: selectedLanguage,
       result: finalResult,
-
       debug: {
         model: modelName,
         finishReason,
       },
     });
   } catch (error) {
+    /*
+      IMPORTANT:
+      Do not hide Gemini errors with success:true.
+    */
+
     console.error(
-      "========== FULL GROQ DISEASE ERROR =========="
+      "========== FULL DISEASE ERROR =========="
     );
 
     console.error(error);
@@ -488,7 +398,7 @@ Strict rules:
     );
 
     console.error(
-      "============================================="
+      "========================================"
     );
 
     const errorMessage =
@@ -496,8 +406,43 @@ Strict rules:
       String(error) ||
       "Disease detection failed.";
 
-    const statusCode =
-      getErrorStatus(error);
+    let statusCode = Number(
+      error?.status
+    );
+
+    if (
+      !Number.isInteger(statusCode) ||
+      statusCode < 400 ||
+      statusCode > 599
+    ) {
+      if (
+        errorMessage.includes("429") ||
+        errorMessage
+          .toLowerCase()
+          .includes("quota") ||
+        errorMessage
+          .toLowerCase()
+          .includes("resource_exhausted")
+      ) {
+        statusCode = 429;
+      } else if (
+        errorMessage.includes("403") ||
+        errorMessage
+          .toLowerCase()
+          .includes("permission_denied")
+      ) {
+        statusCode = 403;
+      } else if (
+        errorMessage.includes("401") ||
+        errorMessage
+          .toLowerCase()
+          .includes("api key not valid")
+      ) {
+        statusCode = 401;
+      } else {
+        statusCode = 500;
+      }
+    }
 
     return res.status(statusCode).json({
       success: false,

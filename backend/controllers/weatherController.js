@@ -12,6 +12,9 @@ const SUPPORTED_LANGUAGES = {
       cityRequired:
         "Please enter a city or village name.",
 
+      coordinatesRequired:
+        "Valid latitude and longitude are required.",
+
       apiMissing:
         "Weather API is not configured.",
 
@@ -39,21 +42,13 @@ const SUPPORTED_LANGUAGES = {
         "Monitor local weather conditions before field work.",
 
       pesticide:
-        "Avoid spraying pesticides during rain or strong winds. Follow the product label and local agriculture department recommendations.",
+        "Avoid spraying pesticides during rain or strong winds.",
 
       cropCare:
-        "Inspect crops regularly for stress, pests and disease symptoms.",
+        "Inspect crops regularly for stress, pests and diseases.",
 
       fieldWork:
-        "Plan field work according to the current weather conditions.",
-
-      summary: ({
-        place,
-        temperature,
-        humidity,
-        windSpeed,
-      }) =>
-        `The current temperature in ${place} is ${temperature} degrees Celsius. Humidity is ${humidity} percent and wind speed is ${windSpeed} meters per second.`,
+        "Plan field work according to current weather conditions.",
     },
   },
 
@@ -64,11 +59,14 @@ const SUPPORTED_LANGUAGES = {
       cityRequired:
         "దయచేసి నగరం లేదా గ్రామం పేరు నమోదు చేయండి.",
 
+      coordinatesRequired:
+        "సరైన latitude మరియు longitude అవసరం.",
+
       apiMissing:
         "వాతావరణ API సరిగ్గా అమర్చబడలేదు.",
 
       placeNotFound:
-        "నగరం లేదా గ్రామం కనుగొనబడలేదు. పేరును సరిచూసి మళ్లీ ప్రయత్నించండి.",
+        "నగరం లేదా గ్రామం కనుగొనబడలేదు.",
 
       invalidApiKey:
         "వాతావరణ API కీ చెల్లదు.",
@@ -88,24 +86,16 @@ const SUPPORTED_LANGUAGES = {
         "నీటిపారుదల చేయడానికి ముందు నేలలో తేమను పరిశీలించండి.",
 
       rainAlert:
-        "పొలం పనులు ప్రారంభించే ముందు స్థానిక వాతావరణ పరిస్థితులను పరిశీలించండి.",
+        "పొలం పనులకు ముందు స్థానిక వాతావరణాన్ని పరిశీలించండి.",
 
       pesticide:
-        "వర్షం లేదా బలమైన గాలులు ఉన్నప్పుడు పురుగుమందులు పిచికారీ చేయవద్దు. ఉత్పత్తి లేబుల్ మరియు స్థానిక వ్యవసాయ శాఖ సూచనలను పాటించండి.",
+        "వర్షం లేదా బలమైన గాలులు ఉన్నప్పుడు పురుగుమందులు పిచికారీ చేయవద్దు.",
 
       cropCare:
-        "పంటల్లో ఒత్తిడి, పురుగులు మరియు వ్యాధి లక్షణాలు ఉన్నాయో క్రమం తప్పకుండా పరిశీలించండి.",
+        "పంటల్లో పురుగులు మరియు వ్యాధి లక్షణాలను పరిశీలించండి.",
 
       fieldWork:
-        "ప్రస్తుత వాతావరణ పరిస్థితులకు అనుగుణంగా పొలం పనులను ప్రణాళిక చేయండి.",
-
-      summary: ({
-        place,
-        temperature,
-        humidity,
-        windSpeed,
-      }) =>
-        `${place}లో ప్రస్తుత ఉష్ణోగ్రత ${temperature} డిగ్రీల సెల్సియస్. తేమ ${humidity} శాతం మరియు గాలి వేగం సెకనుకు ${windSpeed} మీటర్లు.`,
+        "ప్రస్తుత వాతావరణానికి అనుగుణంగా పొలం పనులను ప్రణాళిక చేయండి.",
     },
   },
 
@@ -116,11 +106,14 @@ const SUPPORTED_LANGUAGES = {
       cityRequired:
         "कृपया शहर या गाँव का नाम दर्ज करें।",
 
+      coordinatesRequired:
+        "सही latitude और longitude आवश्यक हैं।",
+
       apiMissing:
         "मौसम API कॉन्फ़िगर नहीं किया गया है।",
 
       placeNotFound:
-        "शहर या गाँव नहीं मिला। कृपया नाम जाँचें।",
+        "शहर या गाँव नहीं मिला।",
 
       invalidApiKey:
         "मौसम API कुंजी अमान्य है।",
@@ -140,24 +133,16 @@ const SUPPORTED_LANGUAGES = {
         "सिंचाई से पहले मिट्टी की नमी जाँचें।",
 
       rainAlert:
-        "खेत का काम शुरू करने से पहले स्थानीय मौसम की स्थिति जाँचें।",
+        "खेत का काम शुरू करने से पहले मौसम जाँचें।",
 
       pesticide:
-        "बारिश या तेज हवा में कीटनाशक का छिड़काव न करें। उत्पाद लेबल और स्थानीय कृषि विभाग की सलाह का पालन करें।",
+        "बारिश या तेज हवा में कीटनाशक का छिड़काव न करें।",
 
       cropCare:
-        "फसल में तनाव, कीट और रोग के लक्षणों की नियमित जाँच करें।",
+        "फसल में कीट और रोग के लक्षणों की जाँच करें।",
 
       fieldWork:
-        "वर्तमान मौसम के अनुसार खेत के काम की योजना बनाएँ।",
-
-      summary: ({
-        place,
-        temperature,
-        humidity,
-        windSpeed,
-      }) =>
-        `${place} में वर्तमान तापमान ${temperature} डिग्री सेल्सियस है। नमी ${humidity} प्रतिशत और हवा की गति ${windSpeed} मीटर प्रति सेकंड है।`,
+        "वर्तमान मौसम के अनुसार खेत का काम करें।",
     },
   },
 
@@ -168,11 +153,14 @@ const SUPPORTED_LANGUAGES = {
       cityRequired:
         "நகரம் அல்லது கிராமத்தின் பெயரை உள்ளிடவும்.",
 
+      coordinatesRequired:
+        "சரியான latitude மற்றும் longitude தேவை.",
+
       apiMissing:
         "வானிலை API அமைக்கப்படவில்லை.",
 
       placeNotFound:
-        "நகரம் அல்லது கிராமம் கிடைக்கவில்லை. பெயரைச் சரிபார்க்கவும்.",
+        "நகரம் அல்லது கிராமம் கிடைக்கவில்லை.",
 
       invalidApiKey:
         "வானிலை API விசை தவறானது.",
@@ -192,24 +180,16 @@ const SUPPORTED_LANGUAGES = {
         "நீர்ப்பாசனத்திற்கு முன் மண்ணின் ஈரப்பதத்தைச் சரிபார்க்கவும்.",
 
       rainAlert:
-        "வயல் பணிக்கு முன் உள்ளூர் வானிலை நிலையைச் சரிபார்க்கவும்.",
+        "வயல் பணிக்கு முன் வானிலையைச் சரிபார்க்கவும்.",
 
       pesticide:
-        "மழை அல்லது பலத்த காற்றின் போது பூச்சிக்கொல்லி தெளிக்க வேண்டாம். தயாரிப்பு லேபிளையும் உள்ளூர் வேளாண்மைத் துறை ஆலோசனையையும் பின்பற்றவும்.",
+        "மழை அல்லது பலத்த காற்றில் பூச்சிக்கொல்லி தெளிக்க வேண்டாம்.",
 
       cropCare:
-        "பயிர்களில் அழுத்தம், பூச்சி மற்றும் நோய் அறிகுறிகளை தொடர்ந்து கண்காணிக்கவும்.",
+        "பயிர்களில் பூச்சி மற்றும் நோய் அறிகுறிகளைச் சரிபார்க்கவும்.",
 
       fieldWork:
         "தற்போதைய வானிலைக்கு ஏற்ப வயல் பணிகளைத் திட்டமிடவும்.",
-
-      summary: ({
-        place,
-        temperature,
-        humidity,
-        windSpeed,
-      }) =>
-        `${place} பகுதியில் தற்போதைய வெப்பநிலை ${temperature} டிகிரி செல்சியஸ். ஈரப்பதம் ${humidity} சதவீதம் மற்றும் காற்றின் வேகம் வினாடிக்கு ${windSpeed} மீட்டர்.`,
     },
   },
 
@@ -220,11 +200,14 @@ const SUPPORTED_LANGUAGES = {
       cityRequired:
         "ದಯವಿಟ್ಟು ನಗರ ಅಥವಾ ಗ್ರಾಮದ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",
 
+      coordinatesRequired:
+        "ಸರಿಯಾದ latitude ಮತ್ತು longitude ಅಗತ್ಯವಿದೆ.",
+
       apiMissing:
         "ಹವಾಮಾನ API ಹೊಂದಿಸಲಾಗಿಲ್ಲ.",
 
       placeNotFound:
-        "ನಗರ ಅಥವಾ ಗ್ರಾಮ ಕಂಡುಬಂದಿಲ್ಲ. ಹೆಸರನ್ನು ಪರಿಶೀಲಿಸಿ.",
+        "ನಗರ ಅಥವಾ ಗ್ರಾಮ ಕಂಡುಬಂದಿಲ್ಲ.",
 
       invalidApiKey:
         "ಹವಾಮಾನ API ಕೀ ಅಮಾನ್ಯವಾಗಿದೆ.",
@@ -244,24 +227,16 @@ const SUPPORTED_LANGUAGES = {
         "ನೀರಾವರಿಗೂ ಮೊದಲು ಮಣ್ಣಿನ ತೇವಾಂಶವನ್ನು ಪರಿಶೀಲಿಸಿ.",
 
       rainAlert:
-        "ಹೊಲದ ಕೆಲಸಕ್ಕೂ ಮೊದಲು ಸ್ಥಳೀಯ ಹವಾಮಾನ ಸ್ಥಿತಿಯನ್ನು ಪರಿಶೀಲಿಸಿ.",
+        "ಹೊಲದ ಕೆಲಸಕ್ಕೂ ಮೊದಲು ಹವಾಮಾನವನ್ನು ಪರಿಶೀಲಿಸಿ.",
 
       pesticide:
-        "ಮಳೆ ಅಥವಾ ಬಲವಾದ ಗಾಳಿಯ ಸಮಯದಲ್ಲಿ ಕೀಟನಾಶಕ ಸಿಂಪಡಿಸಬೇಡಿ. ಉತ್ಪನ್ನದ ಲೇಬಲ್ ಮತ್ತು ಸ್ಥಳೀಯ ಕೃಷಿ ಇಲಾಖೆಯ ಸಲಹೆಗಳನ್ನು ಅನುಸರಿಸಿ.",
+        "ಮಳೆ ಅಥವಾ ಬಲವಾದ ಗಾಳಿಯಲ್ಲಿ ಕೀಟನಾಶಕ ಸಿಂಪಡಿಸಬೇಡಿ.",
 
       cropCare:
-        "ಬೆಳೆಗಳಲ್ಲಿ ಒತ್ತಡ, ಕೀಟ ಮತ್ತು ರೋಗದ ಲಕ್ಷಣಗಳನ್ನು ನಿಯಮಿತವಾಗಿ ಪರಿಶೀಲಿಸಿ.",
+        "ಬೆಳೆಗಳಲ್ಲಿ ಕೀಟ ಮತ್ತು ರೋಗದ ಲಕ್ಷಣಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
 
       fieldWork:
-        "ಪ್ರಸ್ತುತ ಹವಾಮಾನಕ್ಕೆ ಅನುಗುಣವಾಗಿ ಹೊಲದ ಕೆಲಸವನ್ನು ಯೋಜಿಸಿ.",
-
-      summary: ({
-        place,
-        temperature,
-        humidity,
-        windSpeed,
-      }) =>
-        `${place}ದಲ್ಲಿ ಪ್ರಸ್ತುತ ತಾಪಮಾನ ${temperature} ಡಿಗ್ರಿ ಸೆಲ್ಸಿಯಸ್. ಆರ್ದ್ರತೆ ${humidity} ಶೇಕಡಾ ಮತ್ತು ಗಾಳಿಯ ವೇಗ ಪ್ರತಿ ಸೆಕೆಂಡಿಗೆ ${windSpeed} ಮೀಟರ್.`,
+        "ಪ್ರಸ್ತುತ ಹವಾಮಾನಕ್ಕೆ ಅನುಗುಣವಾಗಿ ಕೆಲಸ ಮಾಡಿ.",
     },
   },
 
@@ -272,11 +247,14 @@ const SUPPORTED_LANGUAGES = {
       cityRequired:
         "നഗരത്തിന്റെയോ ഗ്രാമത്തിന്റെയോ പേര് നൽകുക.",
 
+      coordinatesRequired:
+        "ശരിയായ latitude, longitude ആവശ്യമാണ്.",
+
       apiMissing:
         "കാലാവസ്ഥാ API ക്രമീകരിച്ചിട്ടില്ല.",
 
       placeNotFound:
-        "നഗരമോ ഗ്രാമമോ കണ്ടെത്താനായില്ല. പേര് പരിശോധിക്കുക.",
+        "നഗരമോ ഗ്രാമമോ കണ്ടെത്താനായില്ല.",
 
       invalidApiKey:
         "കാലാവസ്ഥാ API കീ അസാധുവാണ്.",
@@ -296,60 +274,50 @@ const SUPPORTED_LANGUAGES = {
         "ജലസേചനത്തിന് മുമ്പ് മണ്ണിലെ ഈർപ്പം പരിശോധിക്കുക.",
 
       rainAlert:
-        "വയൽ ജോലിക്ക് മുമ്പ് പ്രാദേശിക കാലാവസ്ഥ പരിശോധിക്കുക.",
+        "വയൽ ജോലിക്ക് മുമ്പ് കാലാവസ്ഥ പരിശോധിക്കുക.",
 
       pesticide:
-        "മഴയോ ശക്തമായ കാറ്റോ ഉള്ളപ്പോൾ കീടനാശിനി തളിക്കരുത്. ഉൽപ്പന്ന ലേബലും പ്രാദേശിക കൃഷിവകുപ്പിന്റെ നിർദ്ദേശങ്ങളും പാലിക്കുക.",
+        "മഴയോ ശക്തമായ കാറ്റോ ഉള്ളപ്പോൾ കീടനാശിനി തളിക്കരുത്.",
 
       cropCare:
-        "വിളകളിൽ സമ്മർദ്ദം, കീടങ്ങൾ, രോഗലക്ഷണങ്ങൾ എന്നിവ പതിവായി പരിശോധിക്കുക.",
+        "വിളകളിൽ കീടങ്ങളും രോഗലക്ഷണങ്ങളും പരിശോധിക്കുക.",
 
       fieldWork:
-        "നിലവിലെ കാലാവസ്ഥ അനുസരിച്ച് വയൽ ജോലികൾ ആസൂത്രണം ചെയ്യുക.",
-
-      summary: ({
-        place,
-        temperature,
-        humidity,
-        windSpeed,
-      }) =>
-        `${place}യിലെ നിലവിലെ താപനില ${temperature} ഡിഗ്രി സെൽഷ്യസ് ആണ്. ഈർപ്പം ${humidity} ശതമാനവും കാറ്റിന്റെ വേഗം സെക്കൻഡിൽ ${windSpeed} മീറ്ററുമാണ്.`,
+        "നിലവിലെ കാലാവസ്ഥ അനുസരിച്ച് വയൽ ജോലി ആസൂത്രണം ചെയ്യുക.",
     },
   },
 };
 
-const getLanguageConfig = (language) => {
-  return (
-    SUPPORTED_LANGUAGES[language] ||
-    SUPPORTED_LANGUAGES["en-IN"]
-  );
+const getLanguageConfig = (
+  requestedLanguage
+) => {
+  const language = String(
+    requestedLanguage || "en-IN"
+  ).trim();
+
+  return {
+    language:
+      SUPPORTED_LANGUAGES[language]
+        ? language
+        : "en-IN",
+
+    config:
+      SUPPORTED_LANGUAGES[language] ||
+      SUPPORTED_LANGUAGES["en-IN"],
+  };
 };
 
 const getLocalizedPlaceName = ({
   location,
   apiCode,
-  originalQuery,
+  fallbackName,
 }) => {
-  const localizedName =
-    location?.local_names?.[apiCode];
-
-  if (localizedName) {
-    return localizedName;
-  }
-
-  /*
-   * User already typed the place in Telugu/Tamil/Hindi etc.
-   * In that case preserve the entered script instead of
-   * replacing it with an English API name.
-   */
-  const containsNonLatinCharacters =
-    /[^\u0000-\u007F]/.test(originalQuery);
-
-  if (containsNonLatinCharacters) {
-    return originalQuery;
-  }
-
-  return location?.name || originalQuery;
+  return (
+    location?.local_names?.[apiCode] ||
+    location?.name ||
+    fallbackName ||
+    "Current Location"
+  );
 };
 
 const createFallbackAdvice = (
@@ -361,39 +329,251 @@ const createFallbackAdvice = (
 
   return {
     title: fallback.title,
-    irrigation: fallback.irrigation,
-    rainAlert: fallback.rainAlert,
-    pesticide: fallback.pesticide,
-    cropCare: fallback.cropCare,
-    fieldWork: fallback.fieldWork,
 
-    summary: fallback.summary({
-      place: weatherData.localizedCity,
-      temperature:
-        weatherData.temperature,
-      humidity: weatherData.humidity,
-      windSpeed: weatherData.windSpeed,
-    }),
+    irrigation:
+      fallback.irrigation,
+
+    rainAlert:
+      fallback.rainAlert,
+
+    pesticide:
+      fallback.pesticide,
+
+    cropCare:
+      fallback.cropCare,
+
+    fieldWork:
+      fallback.fieldWork,
+
+    summary:
+      `${weatherData.localizedCity}లో/at current temperature is ` +
+      `${weatherData.temperature}°C, humidity is ` +
+      `${weatherData.humidity}% and wind speed is ` +
+      `${weatherData.windSpeed} m/s.`,
 
     fallback: true,
   };
 };
 
-const getWeather = async (req, res) => {
-  const requestedLanguage = String(
-    req.query.language || "en-IN"
-  ).trim();
+const fetchOpenWeatherData = async ({
+  latitude,
+  longitude,
+  apiCode,
+}) => {
+  const response = await axios.get(
+    "https://api.openweathermap.org/data/2.5/weather",
+    {
+      params: {
+        lat: latitude,
+        lon: longitude,
 
-  const selectedLanguage =
-    Object.prototype.hasOwnProperty.call(
-      SUPPORTED_LANGUAGES,
-      requestedLanguage
-    )
-      ? requestedLanguage
-      : "en-IN";
+        appid:
+          process.env.WEATHER_API_KEY,
 
-  const config = getLanguageConfig(
-    selectedLanguage
+        units: "metric",
+
+        lang: apiCode,
+      },
+
+      timeout: 10000,
+    }
+  );
+
+  return response.data;
+};
+
+const buildWeatherResponse = ({
+  currentWeather,
+  location,
+  localizedCity,
+  latitude,
+  longitude,
+}) => {
+  return {
+    city:
+      currentWeather?.name ||
+      location?.name ||
+      "Current Location",
+
+    localizedCity,
+
+    state:
+      location?.state || null,
+
+    country:
+      location?.country ||
+      currentWeather?.sys?.country ||
+      null,
+
+    latitude:
+      currentWeather?.coord?.lat ??
+      latitude,
+
+    longitude:
+      currentWeather?.coord?.lon ??
+      longitude,
+
+    temperature:
+      currentWeather?.main?.temp,
+
+    humidity:
+      currentWeather?.main?.humidity,
+
+    windSpeed:
+      currentWeather?.wind?.speed,
+
+    condition:
+      currentWeather?.weather?.[0]
+        ?.main,
+
+    description:
+      currentWeather?.weather?.[0]
+        ?.description,
+  };
+};
+
+const generateAdviceSafely = async ({
+  weatherData,
+  language,
+  config,
+}) => {
+  try {
+    return await generateWeatherAdvice(
+      {
+        ...weatherData,
+
+        city:
+          weatherData.localizedCity,
+      },
+
+      language
+    );
+  } catch (error) {
+    console.error(
+      "Groq weather advice error:",
+      error?.response?.data ||
+        error?.message
+    );
+
+    return createFallbackAdvice(
+      config,
+      weatherData
+    );
+  }
+};
+
+const sendWeatherResponse = (
+  res,
+  language,
+  weatherData,
+  aiAdvice
+) => {
+  return res.status(200).json({
+    success: true,
+
+    language,
+
+    city:
+      weatherData.city,
+
+    localizedCity:
+      weatherData.localizedCity,
+
+    state:
+      weatherData.state,
+
+    country:
+      weatherData.country,
+
+    latitude:
+      weatherData.latitude,
+
+    longitude:
+      weatherData.longitude,
+
+    temperature:
+      weatherData.temperature,
+
+    humidity:
+      weatherData.humidity,
+
+    windSpeed:
+      weatherData.windSpeed,
+
+    condition:
+      weatherData.condition,
+
+    description:
+      weatherData.description,
+
+    aiAdvice,
+  });
+};
+
+const handleWeatherError = (
+  error,
+  res,
+  config
+) => {
+  console.error(
+    "Weather controller error:",
+    error?.response?.data ||
+      error?.message
+  );
+
+  if (
+    error?.response?.status === 401
+  ) {
+    return res.status(500).json({
+      success: false,
+
+      message:
+        config.messages.invalidApiKey,
+    });
+  }
+
+  if (
+    error?.response?.status === 404
+  ) {
+    return res.status(404).json({
+      success: false,
+
+      message:
+        config.messages.placeNotFound,
+    });
+  }
+
+  if (
+    error?.code === "ECONNABORTED"
+  ) {
+    return res.status(504).json({
+      success: false,
+
+      message:
+        config.messages.timeout,
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+
+    message:
+      config.messages.fetchFailed,
+  });
+};
+
+/*
+ * GET /api/weather?city=Hyderabad&language=en-IN
+ */
+const getWeather = async (
+  req,
+  res
+) => {
+  const {
+    language,
+    config,
+  } = getLanguageConfig(
+    req.query.language
   );
 
   try {
@@ -404,36 +584,39 @@ const getWeather = async (req, res) => {
     if (!city) {
       return res.status(400).json({
         success: false,
+
         message:
           config.messages.cityRequired,
       });
     }
 
-    if (!process.env.WEATHER_API_KEY) {
+    if (
+      !process.env.WEATHER_API_KEY
+    ) {
       console.error(
         "WEATHER_API_KEY is missing"
       );
 
       return res.status(500).json({
         success: false,
+
         message:
           config.messages.apiMissing,
       });
     }
 
-    /*
-     * Step 1:
-     * Search city or village through OpenWeather Geocoding API.
-     */
     const geocodingResponse =
       await axios.get(
         "https://api.openweathermap.org/geo/1.0/direct",
         {
           params: {
             q: city,
+
             limit: 1,
+
             appid:
-              process.env.WEATHER_API_KEY,
+              process.env
+                .WEATHER_API_KEY,
           },
 
           timeout: 10000,
@@ -446,196 +629,213 @@ const getWeather = async (req, res) => {
     if (!location) {
       return res.status(404).json({
         success: false,
+
         message:
-          config.messages.placeNotFound,
+          config.messages
+            .placeNotFound,
       });
     }
 
     const localizedCity =
       getLocalizedPlaceName({
         location,
-        apiCode: config.apiCode,
-        originalQuery: city,
+
+        apiCode:
+          config.apiCode,
+
+        fallbackName: city,
       });
 
-    /*
-     * Step 2:
-     * Fetch weather using coordinates.
-     * This is more accurate than searching weather by name again.
-     */
-    const weatherResponse =
+    const currentWeather =
+      await fetchOpenWeatherData({
+        latitude: location.lat,
+
+        longitude: location.lon,
+
+        apiCode:
+          config.apiCode,
+      });
+
+    const weatherData =
+      buildWeatherResponse({
+        currentWeather,
+
+        location,
+
+        localizedCity,
+
+        latitude: location.lat,
+
+        longitude: location.lon,
+      });
+
+    const aiAdvice =
+      await generateAdviceSafely({
+        weatherData,
+
+        language,
+
+        config,
+      });
+
+    return sendWeatherResponse(
+      res,
+      language,
+      weatherData,
+      aiAdvice
+    );
+  } catch (error) {
+    return handleWeatherError(
+      error,
+      res,
+      config
+    );
+  }
+};
+
+/*
+ * GET /api/weather/location
+ *
+ * Query:
+ * latitude
+ * longitude
+ * language
+ */
+const getWeatherByLocation = async (
+  req,
+  res
+) => {
+  const {
+    language,
+    config,
+  } = getLanguageConfig(
+    req.query.language
+  );
+
+  try {
+    const latitude = Number(
+      req.query.latitude
+    );
+
+    const longitude = Number(
+      req.query.longitude
+    );
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        message:
+          config.messages
+            .coordinatesRequired,
+      });
+    }
+
+    if (
+      !process.env.WEATHER_API_KEY
+    ) {
+      console.error(
+        "WEATHER_API_KEY is missing"
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          config.messages.apiMissing,
+      });
+    }
+
+    const reverseResponse =
       await axios.get(
-        "https://api.openweathermap.org/data/2.5/weather",
+        "https://api.openweathermap.org/geo/1.0/reverse",
         {
           params: {
-            lat: location.lat,
-            lon: location.lon,
+            lat: latitude,
+
+            lon: longitude,
+
+            limit: 1,
+
             appid:
-              process.env.WEATHER_API_KEY,
-            units: "metric",
-            lang: config.apiCode,
+              process.env
+                .WEATHER_API_KEY,
           },
 
           timeout: 10000,
         }
       );
 
+    const location =
+      reverseResponse.data?.[0] ||
+      null;
+
+    const localizedCity =
+      getLocalizedPlaceName({
+        location,
+
+        apiCode:
+          config.apiCode,
+
+        fallbackName:
+          "Current Location",
+      });
+
     const currentWeather =
-      weatherResponse.data;
+      await fetchOpenWeatherData({
+        latitude,
 
-    const weatherData = {
-      city:
-        currentWeather.name ||
-        location.name ||
-        city,
+        longitude,
 
-      localizedCity,
+        apiCode:
+          config.apiCode,
+      });
 
-      state: location.state || null,
+    const weatherData =
+      buildWeatherResponse({
+        currentWeather,
 
-      country:
-        location.country ||
-        currentWeather.sys?.country ||
-        null,
+        location,
 
-      latitude: location.lat,
+        localizedCity,
 
-      longitude: location.lon,
+        latitude,
 
-      temperature:
-        currentWeather.main?.temp,
+        longitude,
+      });
 
-      humidity:
-        currentWeather.main?.humidity,
+    const aiAdvice =
+      await generateAdviceSafely({
+        weatherData,
 
-      windSpeed:
-        currentWeather.wind?.speed,
+        language,
 
-      condition:
-        currentWeather.weather?.[0]
-          ?.main,
+        config,
+      });
 
-      description:
-        currentWeather.weather?.[0]
-          ?.description,
-    };
-
-    let aiAdvice;
-
-    try {
-      aiAdvice =
-        await generateWeatherAdvice(
-          {
-            ...weatherData,
-
-            /*
-             * Gemini ki localized place name pampisthe,
-             * advice title and summary lo kuda ade name use chesthundi.
-             */
-            city:
-              weatherData.localizedCity,
-          },
-
-          selectedLanguage
-        );
-    } catch (aiError) {
-      console.error(
-        "Weather AI failed:",
-        aiError.response?.data ||
-          aiError.message
-      );
-
-      aiAdvice =
-        createFallbackAdvice(
-          config,
-          weatherData
-        );
-    }
-
-    return res.status(200).json({
-      success: true,
-
-      language: selectedLanguage,
-
-      /*
-       * Original API place name.
-       */
-      city: weatherData.city,
-
-      /*
-       * Selected language place name.
-       * Frontend lo idi display cheyyali.
-       */
-      localizedCity:
-        weatherData.localizedCity,
-
-      state: weatherData.state,
-
-      country: weatherData.country,
-
-      latitude: weatherData.latitude,
-
-      longitude:
-        weatherData.longitude,
-
-      temperature:
-        weatherData.temperature,
-
-      humidity:
-        weatherData.humidity,
-
-      windSpeed:
-        weatherData.windSpeed,
-
-      condition:
-        weatherData.condition,
-
-      description:
-        weatherData.description,
-
-      aiAdvice,
-    });
-  } catch (error) {
-    console.error(
-      "Weather controller error:",
-      error.response?.data ||
-        error.message
+    return sendWeatherResponse(
+      res,
+      language,
+      weatherData,
+      aiAdvice
     );
-
-    if (error.response?.status === 404) {
-      return res.status(404).json({
-        success: false,
-        message:
-          config.messages.placeNotFound,
-      });
-    }
-
-    if (error.response?.status === 401) {
-      return res.status(500).json({
-        success: false,
-        message:
-          config.messages.invalidApiKey,
-      });
-    }
-
-    if (
-      error.code === "ECONNABORTED"
-    ) {
-      return res.status(504).json({
-        success: false,
-        message:
-          config.messages.timeout,
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message:
-        config.messages.fetchFailed,
-    });
+  } catch (error) {
+    return handleWeatherError(
+      error,
+      res,
+      config
+    );
   }
 };
 
 module.exports = {
   getWeather,
+  getWeatherByLocation,
 };

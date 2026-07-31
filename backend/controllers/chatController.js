@@ -1,8 +1,24 @@
 const Groq = require("groq-sdk");
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let groqClient = null;
+
+const getGroqClient = () => {
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      "GROQ_API_KEY is missing in Railway Variables."
+    );
+  }
+
+  if (!groqClient) {
+    groqClient = new Groq({
+      apiKey,
+    });
+  }
+
+  return groqClient;
+};
 
 const SUPPORTED_LANGUAGES = {
   "en-IN": {
@@ -170,7 +186,10 @@ ${agricultureOnlyMessage}
 - 5 recommended actions
 - 4 prevention points
 
-15. Complete every sentence and every section. Do not repeat similar points.
+15. Complete every sentence and every section.
+
+16. Do not repeat similar points.
+
 Use this structure when suitable:
 
 🌾 Problem:
@@ -188,7 +207,6 @@ Explain how to reduce the chance of the issue happening again.
 For simple questions, give a direct answer without forcing all headings.
 `.trim();
 };
-
 const generateGroqAnswer = async ({
   message,
   languageConfig,
@@ -200,26 +218,27 @@ const generateGroqAnswer = async ({
   });
 
   const firstCompletion =
-    await groq.chat.completions.create({
-      model:
-        process.env.GROQ_MODEL ||
-        "llama-3.3-70b-versatile",
+    await getGroqClient()
+      .chat.completions.create({
+        model:
+          process.env.GROQ_MODEL ||
+          "llama-3.3-70b-versatile",
 
-      temperature: 0.2,
-      top_p: 0.85,
-      max_completion_tokens: 2500,
+        temperature: 0.2,
+        top_p: 0.85,
+        max_completion_tokens: 2500,
 
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: message,
-        },
-      ],
-    });
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+      });
 
   const firstAnswer =
     cleanGeneratedText(
@@ -241,7 +260,6 @@ const generateGroqAnswer = async ({
     firstAnswer.length
   );
 
-  // Response complete ayithe direct ga return chesthundi
   if (
     firstFinishReason !== "length" ||
     !firstAnswer
@@ -256,21 +274,21 @@ const generateGroqAnswer = async ({
     "First response was cut. Generating continuation..."
   );
 
-  // First response cut ayithe remaining answer generate chesthundi
   const secondCompletion =
-    await groq.chat.completions.create({
-      model:
-        process.env.GROQ_MODEL ||
-        "llama-3.3-70b-versatile",
+    await getGroqClient()
+      .chat.completions.create({
+        model:
+          process.env.GROQ_MODEL ||
+          "llama-3.3-70b-versatile",
 
-      temperature: 0.2,
-      top_p: 0.85,
-      max_completion_tokens: 2000,
+        temperature: 0.2,
+        top_p: 0.85,
+        max_completion_tokens: 2000,
 
-      messages: [
-        {
-          role: "system",
-          content: `
+        messages: [
+          {
+            role: "system",
+            content: `
 ${systemPrompt}
 
 The previous answer was cut because of a token limit.
@@ -283,11 +301,11 @@ Rules:
 - Complete all remaining sections.
 - Keep the continuation concise.
 - End with a complete sentence.
-          `.trim(),
-        },
-        {
-          role: "user",
-          content: `
+            `.trim(),
+          },
+          {
+            role: "user",
+            content: `
 Original question:
 ${message}
 
@@ -295,10 +313,10 @@ Previous incomplete answer:
 ${firstAnswer}
 
 Continue the answer without repeating anything.
-          `.trim(),
-        },
-      ],
-    });
+            `.trim(),
+          },
+        ],
+      });
 
   const secondAnswer =
     cleanGeneratedText(
@@ -320,16 +338,100 @@ Continue the answer without repeating anything.
     secondAnswer.length
   );
 
-  const completeAnswer = [
-    firstAnswer,
-    secondAnswer,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
   return {
-    generatedAnswer: completeAnswer,
+    generatedAnswer: [firstAnswer, secondAnswer]
+      .filter(Boolean)
+      .join("\n"),
     finishReason:
-      secondFinishReason || firstFinishReason,
+      secondFinishReason ||
+      firstFinishReason,
   };
+};
+
+const chatWithAI = async (req, res) => {
+  const requestedLanguage =
+    typeof req.body?.language === "string"
+      ? req.body.language
+      : "en-IN";
+
+  const selectedLanguage =
+    Object.prototype.hasOwnProperty.call(
+      SUPPORTED_LANGUAGES,
+      requestedLanguage
+    )
+      ? requestedLanguage
+      : "en-IN";
+
+  const languageConfig =
+    getLanguageConfig(selectedLanguage);
+
+  try {
+    const message =
+      typeof req.body?.message === "string"
+        ? req.body.message.trim()
+        : "";
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        message:
+          languageConfig.invalidMessage,
+      });
+    }
+
+    if (message.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: languageConfig.tooLong,
+      });
+    }
+
+    const {
+      generatedAnswer,
+      finishReason,
+    } = await generateGroqAnswer({
+      message,
+      languageConfig,
+    });
+
+    if (!generatedAnswer) {
+      return res.status(200).json({
+        success: true,
+        question: message,
+        language: selectedLanguage,
+        answer: languageConfig.fallback,
+        fallback: true,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      question: message,
+      language: selectedLanguage,
+      answer: generatedAnswer,
+      debug: {
+        finishReason,
+        answerLength:
+          generatedAnswer.length,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Groq Chat Error:",
+      error?.response?.data ||
+        error?.message ||
+        error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error?.message ||
+        languageConfig.fallback,
+    });
+  }
+};
+
+module.exports = {
+  chatWithAI,
 };

@@ -13,22 +13,24 @@ const {
   "../controllers/weatherController"
 );
 
-/*
- * Current-location weather
- *
- * GET /api/weather/location
- */
+const {
+  getFiveDayForecast,
+} = require(
+  "../controllers/weatherForecastController"
+);
+
+router.get(
+  "/forecast",
+  authMiddleware,
+  getFiveDayForecast
+);
+
 router.get(
   "/location",
   authMiddleware,
   getWeatherByLocation
 );
 
-/*
- * Manual city search
- *
- * GET /api/weather?city=Hyderabad
- */
 router.get(
   "/",
   authMiddleware,

@@ -1,10 +1,17 @@
-const {
-  GoogleGenerativeAI,
-} = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY
-);
+const getGroqClient = () => {
+  const apiKey =
+    process.env.GROQ_API_KEY?.trim();
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Groq({
+    apiKey,
+  });
+};
 
 const LANGUAGE_NAMES = {
   "en-IN": "English",
@@ -116,7 +123,7 @@ const FALLBACK_TEXT = {
       `${crop} is recommended based on the selected soil type, season, rainfall and temperature. Use certified seeds, maintain proper irrigation and consult a local agriculture officer before applying fertilizers or pesticides.`,
 
     quotaMessage:
-      "Gemini API quota is exceeded. A standard recommendation is being shown.",
+      "AI request limit was reached. A standard recommendation is being shown.",
 
     serviceMessage:
       "AI service is temporarily unavailable. A standard recommendation is being shown.",
@@ -156,7 +163,7 @@ const FALLBACK_TEXT = {
       `మీరు ఇచ్చిన నేల రకం, కాలం, వర్షపాతం మరియు ఉష్ణోగ్రత ఆధారంగా ${crop} సిఫార్సు చేయబడింది. నాణ్యమైన విత్తనాలను ఉపయోగించండి, సరైన నీటిపారుదల నిర్వహించండి మరియు ఎరువులు లేదా పురుగుమందులు వాడే ముందు వ్యవసాయ అధికారిని సంప్రదించండి.`,
 
     quotaMessage:
-      "Gemini API పరిమితి పూర్తైంది. సాధారణ పంట సిఫార్సు చూపబడుతోంది.",
+      "AI అభ్యర్థన పరిమితి పూర్తైంది. సాధారణ పంట సిఫార్సు చూపబడుతోంది.",
 
     serviceMessage:
       "AI సేవ ప్రస్తుతం అందుబాటులో లేదు. సాధారణ పంట సిఫార్సు చూపబడుతోంది.",
@@ -196,7 +203,7 @@ const FALLBACK_TEXT = {
       `मिट्टी के प्रकार, मौसम, वर्षा और तापमान के आधार पर ${crop} की सिफारिश की गई है। प्रमाणित बीजों का उपयोग करें, उचित सिंचाई बनाए रखें और उर्वरक या कीटनाशक उपयोग से पहले कृषि अधिकारी से संपर्क करें।`,
 
     quotaMessage:
-      "Gemini API की सीमा पूरी हो गई है। सामान्य सुझाव दिखाया जा रहा है।",
+      "AI अनुरोध सीमा पूरी हो गई है। सामान्य सुझाव दिखाया जा रहा है।",
 
     serviceMessage:
       "AI सेवा अभी उपलब्ध नहीं है। सामान्य सुझाव दिखाया जा रहा है।",
@@ -236,7 +243,7 @@ const FALLBACK_TEXT = {
       `மண் வகை, பருவம், மழை மற்றும் வெப்பநிலையை அடிப்படையாகக் கொண்டு ${crop} பரிந்துரைக்கப்படுகிறது. தரமான விதைகளைப் பயன்படுத்தி சரியான நீர்ப்பாசனத்தை மேற்கொள்ளவும். உரம் அல்லது பூச்சிக்கொல்லி பயன்படுத்துவதற்கு முன் வேளாண் அதிகாரியை அணுகவும்.`,
 
     quotaMessage:
-      "Gemini API வரம்பு முடிந்துள்ளது. பொதுவான பரிந்துரை காட்டப்படுகிறது.",
+      "AI கோரிக்கை வரம்பு முடிந்துள்ளது. பொதுவான பரிந்துரை காட்டப்படுகிறது.",
 
     serviceMessage:
       "AI சேவை தற்போது கிடைக்கவில்லை. பொதுவான பரிந்துரை காட்டப்படுகிறது.",
@@ -276,7 +283,7 @@ const FALLBACK_TEXT = {
       `ಮಣ್ಣಿನ ಪ್ರಕಾರ, ಋತು, ಮಳೆ ಮತ್ತು ತಾಪಮಾನವನ್ನು ಆಧರಿಸಿ ${crop} ಶಿಫಾರಸು ಮಾಡಲಾಗಿದೆ. ಉತ್ತಮ ಬೀಜಗಳನ್ನು ಬಳಸಿ, ಸರಿಯಾದ ನೀರಾವರಿ ಮಾಡಿ ಮತ್ತು ಗೊಬ್ಬರ ಅಥವಾ ಕೀಟನಾಶಕ ಬಳಸುವ ಮೊದಲು ಕೃಷಿ ಅಧಿಕಾರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.`,
 
     quotaMessage:
-      "Gemini API ಮಿತಿ ಪೂರ್ಣಗೊಂಡಿದೆ. ಸಾಮಾನ್ಯ ಶಿಫಾರಸು ತೋರಿಸಲಾಗುತ್ತಿದೆ.",
+      "AI ವಿನಂತಿ ಮಿತಿ ಪೂರ್ಣಗೊಂಡಿದೆ. ಸಾಮಾನ್ಯ ಶಿಫಾರಸು ತೋರಿಸಲಾಗುತ್ತಿದೆ.",
 
     serviceMessage:
       "AI ಸೇವೆ ಈಗ ಲಭ್ಯವಿಲ್ಲ. ಸಾಮಾನ್ಯ ಶಿಫಾರಸು ತೋರಿಸಲಾಗುತ್ತಿದೆ.",
@@ -316,7 +323,7 @@ const FALLBACK_TEXT = {
       `മണ്ണിന്റെ തരം, കാലം, മഴ, താപനില എന്നിവയെ അടിസ്ഥാനമാക്കി ${crop} ശുപാർശ ചെയ്യുന്നു. ഗുണമേന്മയുള്ള വിത്തുകൾ ഉപയോഗിക്കുക, ശരിയായ ജലസേചനം നൽകുക, വളമോ കീടനാശിനിയോ ഉപയോഗിക്കുന്നതിന് മുമ്പ് കൃഷി ഓഫീസറെ സമീപിക്കുക.`,
 
     quotaMessage:
-      "Gemini API പരിധി കഴിഞ്ഞു. സാധാരണ ശുപാർശ കാണിക്കുന്നു.",
+      "AI അഭ്യർത്ഥന പരിധി കഴിഞ്ഞു. സാധാരണ ശുപാർശ കാണിക്കുന്നു.",
 
     serviceMessage:
       "AI സേവനം ഇപ്പോൾ ലഭ്യമല്ല. സാധാരണ ശുപാർശ കാണിക്കുന്നു.",
@@ -375,7 +382,6 @@ const getLocalizedCropName = (
     crop
   );
 };
-
 const getFallbackResponse = ({
   cropKey,
   soilType,
@@ -402,43 +408,63 @@ const getFallbackResponse = ({
   return {
     success: true,
 
-    recommendedCrop: localizedCrop,
-    recommendedCropKey: cropKey,
+    recommendedCrop:
+      localizedCrop,
+
+    recommendedCropKey:
+      cropKey,
 
     soilType,
     season,
     rainfall,
     temperature,
-    language: selectedLanguage,
 
-    confidence: text.confidence,
+    language:
+      selectedLanguage,
 
-    reason: text.reason(
-      localizedCrop,
-      season
-    ),
+    confidence:
+      text.confidence,
 
-    fertilizer: text.fertilizer,
-    pesticide: text.pesticide,
-    irrigation: text.irrigation,
-    expectedYield: text.expectedYield,
-    tips: text.tips,
+    reason:
+      text.reason(
+        localizedCrop,
+        season
+      ),
+
+    fertilizer:
+      text.fertilizer,
+
+    pesticide:
+      text.pesticide,
+
+    irrigation:
+      text.irrigation,
+
+    expectedYield:
+      text.expectedYield,
+
+    tips:
+      text.tips,
 
     narration:
-      text.narration(localizedCrop),
+      text.narration(
+        localizedCrop
+      ),
 
     fallback: true,
 
     message:
-      message || text.serviceMessage,
+      message ||
+      text.serviceMessage,
   };
 };
 
 const extractJson = (text) => {
-  let cleanedText = String(text || "")
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
+  let cleanedText =
+    String(text || "")
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
 
   const firstBrace =
     cleanedText.indexOf("{");
@@ -447,24 +473,41 @@ const extractJson = (text) => {
     cleanedText.lastIndexOf("}");
 
   if (
-    firstBrace !== -1 &&
-    lastBrace !== -1
+    firstBrace === -1 ||
+    lastBrace === -1 ||
+    lastBrace <= firstBrace
   ) {
-    cleanedText = cleanedText.slice(
-      firstBrace,
-      lastBrace + 1
+    throw new Error(
+      "Groq did not return valid JSON."
     );
   }
 
-  return JSON.parse(cleanedText);
+  cleanedText =
+    cleanedText.slice(
+      firstBrace,
+      lastBrace + 1
+    );
+
+  try {
+    return JSON.parse(
+      cleanedText
+    );
+  } catch (error) {
+    throw new Error(
+      `Groq JSON parsing failed: ${error.message}`
+    );
+  }
 };
 
 const getValidString = (
   value,
   fallback
 ) => {
-  return typeof value === "string" &&
+  return (
+    typeof value ===
+      "string" &&
     value.trim()
+  )
     ? value.trim()
     : fallback;
 };
@@ -473,22 +516,88 @@ const getValidArray = (
   value,
   fallback
 ) => {
-  if (!Array.isArray(value)) {
+  if (
+    !Array.isArray(value)
+  ) {
     return fallback;
   }
 
-  const cleanedItems = value
-    .filter(
-      (item) =>
-        typeof item === "string" &&
+  const cleanedItems =
+    value
+      .filter(
+        (item) =>
+          typeof item ===
+            "string" &&
+          item.trim()
+      )
+      .map((item) =>
         item.trim()
-    )
-    .map((item) => item.trim())
-    .slice(0, 3);
+      )
+      .slice(0, 3);
 
-  return cleanedItems.length === 3
+  return (
+    cleanedItems.length === 3
+  )
     ? cleanedItems
     : fallback;
+};
+
+const getGroqErrorStatus = (
+  error
+) => {
+  const directStatus =
+    Number(
+      error?.status ||
+      error?.response?.status
+    );
+
+  if (
+    Number.isInteger(
+      directStatus
+    ) &&
+    directStatus >= 400 &&
+    directStatus <= 599
+  ) {
+    return directStatus;
+  }
+
+  const message =
+    String(
+      error?.message || ""
+    ).toLowerCase();
+
+  if (
+    message.includes("429") ||
+    message.includes(
+      "rate limit"
+    ) ||
+    message.includes("quota")
+  ) {
+    return 429;
+  }
+
+  if (
+    message.includes("401") ||
+    message.includes(
+      "unauthorized"
+    ) ||
+    message.includes(
+      "api key"
+    )
+  ) {
+    return 401;
+  }
+
+  if (
+    message.includes("403") ||
+    message.includes(
+      "permission"
+    )
+  ) {
+    return 403;
+  }
+
+  return 500;
 };
 
 const recommendCrop = async (
@@ -514,29 +623,42 @@ const recommendCrop = async (
     rainfall === undefined ||
     temperature === undefined
   ) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Soil type, season, rainfall and temperature are required.",
-    });
+    return res
+      .status(400)
+      .json({
+        success: false,
+
+        message:
+          "Soil type, season, rainfall and temperature are required.",
+      });
   }
 
   if (
-    !SUPPORTED_SOILS.includes(soilType)
+    !SUPPORTED_SOILS.includes(
+      soilType
+    )
   ) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid soil type.",
-    });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message:
+          "Invalid soil type.",
+      });
   }
 
   if (
-    !SUPPORTED_SEASONS.includes(season)
+    !SUPPORTED_SEASONS.includes(
+      season
+    )
   ) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid season.",
-    });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message:
+          "Invalid season.",
+      });
   }
 
   const rainfallNumber =
@@ -546,42 +668,58 @@ const recommendCrop = async (
     Number(temperature);
 
   if (
-    !Number.isFinite(rainfallNumber) ||
+    !Number.isFinite(
+      rainfallNumber
+    ) ||
     !Number.isFinite(
       temperatureNumber
     )
   ) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Rainfall and temperature must be valid numbers.",
-    });
+    return res
+      .status(400)
+      .json({
+        success: false,
+
+        message:
+          "Rainfall and temperature must be valid numbers.",
+      });
   }
 
-  if (rainfallNumber < 0) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Rainfall cannot be negative.",
-    });
+  if (
+    rainfallNumber < 0
+  ) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+
+        message:
+          "Rainfall cannot be negative.",
+      });
   }
 
   if (
     temperatureNumber < -20 ||
     temperatureNumber > 60
   ) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Temperature must be between -20°C and 60°C.",
-    });
+    return res
+      .status(400)
+      .json({
+        success: false,
+
+        message:
+          "Temperature must be between -20°C and 60°C.",
+      });
   }
 
   const cropKey =
     getRecommendedCrop({
       soilType,
       season,
-      rainfall: rainfallNumber,
+
+      rainfall:
+        rainfallNumber,
+
       temperature:
         temperatureNumber,
     });
@@ -593,7 +731,9 @@ const recommendCrop = async (
     );
 
   const fallbackText =
-    FALLBACK_TEXT[selectedLanguage];
+    FALLBACK_TEXT[
+      selectedLanguage
+    ];
 
   const createFallback = (
     message
@@ -602,42 +742,56 @@ const recommendCrop = async (
       cropKey,
       soilType,
       season,
-      rainfall: rainfallNumber,
+
+      rainfall:
+        rainfallNumber,
+
       temperature:
         temperatureNumber,
-      language: selectedLanguage,
+
+      language:
+        selectedLanguage,
+
       message,
     });
 
-  if (!process.env.GEMINI_API_KEY) {
+  const groq =
+    getGroqClient();
+
+  const modelName =
+    process.env
+      .GROQ_MODEL?.trim();
+
+  if (
+    !groq ||
+    !modelName
+  ) {
     console.warn(
-      "GEMINI_API_KEY is missing."
+      "GROQ_API_KEY or GROQ_MODEL is missing."
     );
 
-    return res.status(200).json(
-      createFallback(
-        fallbackText.serviceMessage
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        createFallback(
+          fallbackText
+            .serviceMessage
+        )
+      );
   }
 
   try {
     const languageName =
-      LANGUAGE_NAMES[selectedLanguage];
-
-    const model =
-      genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType:
-            "application/json",
-        },
-      });
+      LANGUAGE_NAMES[
+        selectedLanguage
+      ];
 
     const prompt = `
 You are AgriSense AI, an expert Indian agriculture advisor.
+
+The crop has already been selected using backend rule-based logic.
+
+Do not change the selected crop.
 
 Farmer information:
 
@@ -647,26 +801,28 @@ Rainfall: ${rainfallNumber} mm
 Temperature: ${temperatureNumber} °C
 
 Selected crop:
+
 Canonical crop name: ${cropKey}
 Localized crop name: ${localizedCrop}
 
 Required response language:
+
 ${languageName}
 
-Return exactly one valid JSON object:
+Return exactly one valid JSON object using this structure:
 
 {
   "recommendedCrop": "${localizedCrop}",
-  "confidence": "96%",
+  "confidence": "Realistic confidence percentage",
   "reason": [
     "Reason 1",
     "Reason 2",
     "Reason 3"
   ],
-  "fertilizer": "Fertilizer advice",
+  "fertilizer": "Safe fertilizer guidance",
   "pesticide": "Safe pesticide guidance",
-  "irrigation": "Irrigation advice",
-  "expectedYield": "Expected yield per hectare",
+  "irrigation": "Practical irrigation guidance",
+  "expectedYield": "Realistic expected yield guidance per hectare",
   "tips": [
     "Tip 1",
     "Tip 2",
@@ -679,149 +835,223 @@ Strict rules:
 
 1. Write every user-facing value in ${languageName}.
 2. Keep all JSON property names in English.
-3. Keep recommendedCrop as "${localizedCrop}".
-4. Return valid JSON only.
-5. Do not use markdown or code blocks.
-6. Include exactly three reasons.
-7. Include exactly three practical tips.
-8. Narration must be natural and suitable for text-to-speech.
-9. Do not recommend banned or highly hazardous pesticides.
-10. Mention that pesticides must follow the product label and local agriculture officer guidance.
-11. Mention expected yield using an appropriate unit per hectare.
-12. Do not promise guaranteed yield.
-13. Keep the response practical and concise.
+3. Keep recommendedCrop exactly as "${localizedCrop}".
+4. Do not change the selected crop.
+5. Return valid JSON only.
+6. Do not use markdown or code blocks.
+7. Include exactly three reasons.
+8. Include exactly three practical tips.
+9. Narration must be natural and suitable for text-to-speech.
+10. Do not recommend banned, restricted or highly hazardous pesticides.
+11. Do not provide exact pesticide dosage.
+12. State that pesticides must be used according to the product label and local agriculture officer guidance.
+13. Fertilizer advice must recommend using a soil test report and local expert guidance.
+14. Do not promise a guaranteed yield.
+15. Explain that yield depends on seed quality, soil fertility, weather, irrigation and farm management.
+16. Keep the response concise, complete and farmer-friendly.
 `;
 
-    const result =
-      await model.generateContent(prompt);
+    const completion =
+      await groq.chat
+        .completions
+        .create({
+          model:
+            modelName,
+
+          temperature:
+            0.2,
+
+          max_completion_tokens:
+            1600,
+
+          messages: [
+            {
+              role:
+                "system",
+
+              content:
+                "You are a responsible Indian agriculture advisor. Return strict JSON only.",
+            },
+
+            {
+              role:
+                "user",
+
+              content:
+                prompt,
+            },
+          ],
+        });
 
     const responseText =
-      result?.response?.text?.() || "";
+      completion
+        ?.choices?.[0]
+        ?.message?.content ||
+      "";
 
-    if (!responseText.trim()) {
-      return res.status(200).json(
-        createFallback(
-          fallbackText.serviceMessage
-        )
-      );
+    const finishReason =
+      completion
+        ?.choices?.[0]
+        ?.finish_reason ||
+      "unknown";
+
+    console.log(
+      "Groq crop recommendation finish reason:",
+      finishReason
+    );
+
+    if (
+      !responseText.trim()
+    ) {
+      return res
+        .status(200)
+        .json(
+          createFallback(
+            fallbackText
+              .serviceMessage
+          )
+        );
     }
 
     let aiData;
 
     try {
       aiData =
-        extractJson(responseText);
-    } catch (parseError) {
+        extractJson(
+          responseText
+        );
+    } catch (
+      parseError
+    ) {
       console.error(
-        "Invalid Gemini JSON:",
+        "Invalid Groq JSON:",
         responseText
       );
 
-      return res.status(200).json(
-        createFallback(
-          fallbackText.invalidMessage
-        )
-      );
+      return res
+        .status(200)
+        .json(
+          createFallback(
+            fallbackText
+              .invalidMessage
+          )
+        );
     }
 
     const fallback =
       createFallback();
 
-    return res.status(200).json({
-      success: true,
+    return res
+      .status(200)
+      .json({
+        success: true,
 
-      recommendedCrop:
-        getValidString(
-          aiData.recommendedCrop,
-          localizedCrop
-        ),
+        recommendedCrop:
+          getValidString(
+            aiData
+              .recommendedCrop,
 
-      recommendedCropKey:
-        cropKey,
+            localizedCrop
+          ),
 
-      soilType,
-      season,
-      rainfall: rainfallNumber,
-      temperature:
-        temperatureNumber,
-      language:
-        selectedLanguage,
+        recommendedCropKey:
+          cropKey,
 
-      confidence:
-        getValidString(
-          aiData.confidence,
-          fallback.confidence
-        ),
+        soilType,
+        season,
 
-      reason:
-        getValidArray(
-          aiData.reason,
-          fallback.reason
-        ),
+        rainfall:
+          rainfallNumber,
 
-      fertilizer:
-        getValidString(
-          aiData.fertilizer,
-          fallback.fertilizer
-        ),
+        temperature:
+          temperatureNumber,
 
-      pesticide:
-        getValidString(
-          aiData.pesticide,
-          fallback.pesticide
-        ),
+        language:
+          selectedLanguage,
 
-      irrigation:
-        getValidString(
-          aiData.irrigation,
-          fallback.irrigation
-        ),
+        confidence:
+          getValidString(
+            aiData.confidence,
+            fallback.confidence
+          ),
 
-      expectedYield:
-        getValidString(
-          aiData.expectedYield,
-          fallback.expectedYield
-        ),
+        reason:
+          getValidArray(
+            aiData.reason,
+            fallback.reason
+          ),
 
-      tips:
-        getValidArray(
-          aiData.tips,
-          fallback.tips
-        ),
+        fertilizer:
+          getValidString(
+            aiData.fertilizer,
+            fallback.fertilizer
+          ),
 
-      narration:
-        getValidString(
-          aiData.narration,
-          fallback.narration
-        ),
+        pesticide:
+          getValidString(
+            aiData.pesticide,
+            fallback.pesticide
+          ),
 
-      fallback: false,
-    });
+        irrigation:
+          getValidString(
+            aiData.irrigation,
+            fallback.irrigation
+          ),
+
+        expectedYield:
+          getValidString(
+            aiData
+              .expectedYield,
+
+            fallback
+              .expectedYield
+          ),
+
+        tips:
+          getValidArray(
+            aiData.tips,
+            fallback.tips
+          ),
+
+        narration:
+          getValidString(
+            aiData.narration,
+            fallback.narration
+          ),
+
+        fallback: false,
+      });
   } catch (error) {
     const errorMessage =
       error?.message ||
       String(error);
 
+    const status =
+      getGroqErrorStatus(
+        error
+      );
+
     console.error(
-      "Crop Recommendation Error:",
-      errorMessage
+      "Groq Crop Recommendation Error:",
+      {
+        status,
+        message:
+          errorMessage,
+      }
     );
 
-    const normalizedError =
-      errorMessage.toLowerCase();
-
-    const quotaExceeded =
-      normalizedError.includes("quota") ||
-      normalizedError.includes("429") ||
-      error?.status === 429;
-
-    return res.status(200).json(
-      createFallback(
-        quotaExceeded
-          ? fallbackText.quotaMessage
-          : fallbackText.serviceMessage
-      )
-    );
+    return res
+      .status(200)
+      .json(
+        createFallback(
+          status === 429
+            ? fallbackText
+                .quotaMessage
+            : fallbackText
+                .serviceMessage
+        )
+      );
   }
 };
 

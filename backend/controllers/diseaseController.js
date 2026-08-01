@@ -257,10 +257,11 @@ const classifyImageWithHuggingFace =
     }
 
     const endpoint =
-  process.env
-    .HUGGINGFACE_INFERENCE_URL
-    ?.trim() ||
-  `https://router.huggingface.co/hf-inference/models/${modelName}`;
+      process.env
+        .HUGGINGFACE_INFERENCE_URL
+        ?.trim() ||
+      `https://router.huggingface.co/hf-inference/models/${modelName}`;
+
     console.log(
       "Hugging Face model:",
       modelName
@@ -287,20 +288,63 @@ const classifyImageWithHuggingFace =
               "application/json",
           },
 
-          params: {
-            wait_for_model:
-              "true",
-          },
-
-          timeout: 90000,
+          timeout:
+            90000,
 
           maxBodyLength:
             Infinity,
 
           maxContentLength:
             Infinity,
+
+          validateStatus:
+            () => true,
         }
       );
+
+    console.log(
+      "Hugging Face status:",
+      response.status
+    );
+
+    console.log(
+      "Hugging Face response body:",
+      response.data
+    );
+
+    if (
+      response.status < 200 ||
+      response.status >= 300
+    ) {
+      const responseMessage =
+        typeof response.data ===
+          "string"
+          ? response.data
+          : response.data?.error ||
+            response.data?.message ||
+            JSON.stringify(
+              response.data
+            );
+
+      const requestError =
+        new Error(
+          responseMessage ||
+            "Hugging Face request failed."
+        );
+
+      requestError.status =
+        response.status;
+
+      requestError.response = {
+        status:
+          response.status,
+
+        data:
+          response.data,
+      };
+
+      throw requestError;
+    }
 
     if (
       response?.data?.error
@@ -439,6 +483,11 @@ Strict rules:
         ?.message?.content ||
       "";
 
+    console.log(
+      "Groq disease guidance response:",
+      responseText
+    );
+
     if (
       !responseText.trim()
     ) {
@@ -462,13 +511,17 @@ const detectDisease = async (
 
   try {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Please upload a crop image.",
-        message:
-          "Please upload a crop image.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          error:
+            "Please upload a crop image.",
+
+          message:
+            "Please upload a crop image.",
+        });
     }
 
     if (
@@ -477,26 +530,34 @@ const detectDisease = async (
         "image/"
       )
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "The uploaded file must be an image.",
-        message:
-          "The uploaded file must be an image.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          error:
+            "The uploaded file must be an image.",
+
+          message:
+            "The uploaded file must be an image.",
+        });
     }
 
     if (
       !req.file.buffer ||
       req.file.buffer.length === 0
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "The uploaded image file is empty.",
-        message:
-          "The uploaded image file is empty.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          error:
+            "The uploaded image file is empty.",
+
+          message:
+            "The uploaded image file is empty.",
+        });
     }
 
     const requestedLanguage =
@@ -624,6 +685,22 @@ const detectDisease = async (
       "========== DISEASE DETECTION ERROR =========="
     );
 
+    console.error(
+      "Hugging Face response body:",
+      error?.response?.data
+    );
+
+    console.error(
+      "Status:",
+      error?.response?.status ||
+        error?.status
+    );
+
+    console.error(
+      "Message:",
+      error?.message
+    );
+
     console.error(error);
 
     const status =
@@ -632,12 +709,17 @@ const detectDisease = async (
         error?.status
       );
 
+    const responseData =
+      error?.response?.data;
+
     const originalMessage =
-      error?.response?.data?.error ||
-      error?.response?.data
-        ?.message ||
-      error?.message ||
-      String(error);
+      typeof responseData ===
+        "string"
+        ? responseData
+        : responseData?.error ||
+          responseData?.message ||
+          error?.message ||
+          String(error);
 
     let statusCode =
       Number.isInteger(status) &&
@@ -650,11 +732,20 @@ const detectDisease = async (
       originalMessage;
 
     if (
-      statusCode === 401 ||
+      statusCode === 400
+    ) {
+      friendlyMessage =
+        `Hugging Face rejected the image request: ${originalMessage}`;
+    } else if (
+      statusCode === 401
+    ) {
+      friendlyMessage =
+        "Hugging Face token is invalid. Create a new inference token and update HUGGINGFACE_API_KEY.";
+    } else if (
       statusCode === 403
     ) {
       friendlyMessage =
-        "Hugging Face authentication failed. Check HUGGINGFACE_API_KEY.";
+        `Hugging Face denied inference access: ${originalMessage}`;
     } else if (
       statusCode === 404
     ) {
@@ -669,7 +760,7 @@ const detectDisease = async (
       statusCode === 503
     ) {
       friendlyMessage =
-        "The Hugging Face model is loading. Please wait and try again.";
+        "The Hugging Face model is loading or temporarily unavailable. Please try again.";
     }
 
     return res

@@ -257,11 +257,10 @@ const classifyImageWithHuggingFace =
     }
 
     const endpoint =
-      process.env
-        .HUGGINGFACE_INFERENCE_URL
-        ?.trim() ||
-      `https://api-inference.huggingface.co/models/${modelName}`;
-
+  process.env
+    .HUGGINGFACE_INFERENCE_URL
+    ?.trim() ||
+  `https://router.huggingface.co/hf-inference/models/${modelName}`;
     console.log(
       "Hugging Face model:",
       modelName

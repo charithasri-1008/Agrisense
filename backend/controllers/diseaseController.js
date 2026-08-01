@@ -1,10 +1,6 @@
-const {
-  GoogleGenerativeAI,
-} = require("@google/generative-ai");
+const axios = require("axios");
+const Groq = require("groq-sdk");
 
-/*
-  Supported languages
-*/
 const LANGUAGE_NAMES = {
   "en-IN": "English",
   "te-IN": "Telugu",
@@ -14,12 +10,62 @@ const LANGUAGE_NAMES = {
   "ml-IN": "Malayalam",
 };
 
-/*
-  Extract JSON safely from Gemini response
-*/
-const extractJson = (responseText) => {
+const getGroqClient = () => {
+  const apiKey =
+    process.env.GROQ_API_KEY?.trim();
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Groq({
+    apiKey,
+  });
+};
+
+const getString = (
+  value,
+  fallback = "Not available"
+) => {
+  if (
+    typeof value === "string" &&
+    value.trim()
+  ) {
+    return value.trim();
+  }
+
+  return fallback;
+};
+
+const getSymptoms = (value) => {
+  if (Array.isArray(value)) {
+    const symptoms = value
+      .filter(
+        (item) =>
+          typeof item === "string" &&
+          item.trim()
+      )
+      .map((item) => item.trim())
+      .slice(0, 3);
+
+    if (symptoms.length > 0) {
+      return symptoms;
+    }
+  }
+
+  if (
+    typeof value === "string" &&
+    value.trim()
+  ) {
+    return [value.trim()];
+  }
+
+  return [];
+};
+
+const extractJson = (text) => {
   const cleanedText = String(
-    responseText || ""
+    text || ""
   )
     .replace(/```json/gi, "")
     .replace(/```/g, "")
@@ -37,7 +83,7 @@ const extractJson = (responseText) => {
     lastBrace <= firstBrace
   ) {
     throw new Error(
-      `Gemini did not return valid JSON. Raw response: ${cleanedText}`
+      `AI did not return valid JSON. Raw response: ${cleanedText}`
     );
   }
 
@@ -51,198 +97,377 @@ const extractJson = (responseText) => {
     return JSON.parse(jsonText);
   } catch (error) {
     throw new Error(
-      `Gemini JSON parsing failed. Raw response: ${cleanedText}`
+      `AI JSON parsing failed. Raw response: ${cleanedText}`
     );
   }
 };
 
-/*
-  Validate normal string values
-*/
-const getString = (
-  value,
-  fallback = "Not available"
+const normalizeConfidence = (
+  score
 ) => {
-  if (
-    typeof value === "string" &&
-    value.trim()
-  ) {
-    return value.trim();
-  }
-
-  return fallback;
-};
-
-/*
-  Validate symptoms array
-*/
-const getSymptoms = (value) => {
-  if (Array.isArray(value)) {
-    const symptoms = value
-      .filter(
-        (item) =>
-          typeof item === "string" &&
-          item.trim()
-      )
-      .map((item) =>
-        item.trim()
-      )
-      .slice(0, 3);
-
-    if (symptoms.length > 0) {
-      return symptoms;
-    }
-  }
+  const numericScore =
+    Number(score);
 
   if (
-    typeof value === "string" &&
-    value.trim()
+    !Number.isFinite(
+      numericScore
+    )
   ) {
-    return [
-      value.trim(),
-    ];
+    return "Low";
   }
 
-  return [];
-};
+  const percentage =
+    numericScore <= 1
+      ? numericScore * 100
+      : numericScore;
 
-/*
-  Detect Gemini/API error status
-*/
-const getErrorStatus = (error) => {
-  const directStatus =
-    Number(
-      error?.status ||
-      error?.response?.status
+  const safePercentage =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        percentage
+      )
     );
 
+  return `${safePercentage.toFixed(
+    1
+  )}%`;
+};
+
+const cleanDiseaseLabel = (
+  label
+) => {
+  return String(label || "")
+    .replace(/___/g, " - ")
+    .replace(/__/g, " ")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const getTopPrediction = (
+  responseData
+) => {
+  let predictions =
+    responseData;
+
   if (
-    Number.isInteger(
-      directStatus
+    responseData &&
+    Array.isArray(
+      responseData.predictions
+    )
+  ) {
+    predictions =
+      responseData.predictions;
+  }
+
+  if (
+    Array.isArray(
+      predictions
     ) &&
-    directStatus >= 400 &&
-    directStatus <= 599
-  ) {
-    return directStatus;
-  }
-
-  const message =
-    String(
-      error?.message || ""
-    ).toLowerCase();
-
-  if (
-    message.includes("429") ||
-    message.includes("quota") ||
-    message.includes(
-      "resource_exhausted"
-    ) ||
-    message.includes(
-      "too many requests"
+    Array.isArray(
+      predictions[0]
     )
   ) {
-    return 429;
+    predictions =
+      predictions[0];
   }
 
   if (
-    message.includes("404") ||
-    message.includes(
-      "not found"
+    !Array.isArray(
+      predictions
     ) ||
-    message.includes(
-      "model is no longer available"
-    )
+    predictions.length === 0
   ) {
-    return 404;
+    throw new Error(
+      "Hugging Face did not return any disease prediction."
+    );
   }
+
+  const sortedPredictions =
+    [...predictions].sort(
+      (a, b) =>
+        Number(b?.score || 0) -
+        Number(a?.score || 0)
+    );
+
+  const topPrediction =
+    sortedPredictions[0];
 
   if (
-    message.includes("403") ||
-    message.includes(
-      "permission_denied"
-    ) ||
-    message.includes(
-      "permission denied"
-    )
+    !topPrediction ||
+    !topPrediction.label
   ) {
-    return 403;
+    throw new Error(
+      "Hugging Face returned an invalid disease prediction."
+    );
   }
 
-  if (
-    message.includes("401") ||
-    message.includes(
-      "api key not valid"
-    ) ||
-    message.includes(
-      "unauthorized"
-    )
-  ) {
-    return 401;
-  }
+  return {
+    label:
+      cleanDiseaseLabel(
+        topPrediction.label
+      ),
 
-  return 500;
+    score:
+      Number(
+        topPrediction.score
+      ),
+
+    alternatives:
+      sortedPredictions
+        .slice(1, 3)
+        .map((item) => ({
+          label:
+            cleanDiseaseLabel(
+              item.label
+            ),
+
+          score:
+            Number(
+              item.score
+            ),
+        })),
+  };
 };
 
-/*
-  User-friendly error message
-*/
-const getFriendlyError = (
-  statusCode,
-  originalMessage
-) => {
-  if (statusCode === 429) {
-    return (
-      "Gemini request limit has been reached. " +
-      "Please wait and try again later, or use another Gemini API key/project."
+const classifyImageWithHuggingFace =
+  async (file) => {
+    const apiKey =
+      process.env
+        .HUGGINGFACE_API_KEY
+        ?.trim();
+
+    const modelName =
+      process.env
+        .HUGGINGFACE_MODEL
+        ?.trim();
+
+    if (!apiKey) {
+      throw new Error(
+        "HUGGINGFACE_API_KEY is missing in backend environment variables."
+      );
+    }
+
+    if (!modelName) {
+      throw new Error(
+        "HUGGINGFACE_MODEL is missing in backend environment variables."
+      );
+    }
+
+    const endpoint =
+      process.env
+        .HUGGINGFACE_INFERENCE_URL
+        ?.trim() ||
+      `https://api-inference.huggingface.co/models/${modelName}`;
+
+    console.log(
+      "Hugging Face model:",
+      modelName
     );
-  }
 
-  if (statusCode === 404) {
-    return (
-      "The configured Gemini model is unavailable. " +
-      "Set GEMINI_MODEL to an image-capable model available for your Gemini API project."
+    console.log(
+      "Hugging Face endpoint:",
+      endpoint
     );
-  }
 
-  if (statusCode === 401) {
-    return (
-      "The Gemini API key is invalid. " +
-      "Check GEMINI_API_KEY in the backend environment variables."
+    const response =
+      await axios.post(
+        endpoint,
+        file.buffer,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${apiKey}`,
+
+            "Content-Type":
+              file.mimetype,
+
+            Accept:
+              "application/json",
+          },
+
+          params: {
+            wait_for_model:
+              "true",
+          },
+
+          timeout: 90000,
+
+          maxBodyLength:
+            Infinity,
+
+          maxContentLength:
+            Infinity,
+        }
+      );
+
+    if (
+      response?.data?.error
+    ) {
+      throw new Error(
+        typeof response.data.error ===
+          "string"
+          ? response.data.error
+          : JSON.stringify(
+              response.data.error
+            )
+      );
+    }
+
+    return getTopPrediction(
+      response.data
     );
-  }
+  };
 
-  if (statusCode === 403) {
-    return (
-      "The Gemini API request was denied. " +
-      "Check API permissions, billing, and model access."
+const generateDiseaseGuidance =
+  async ({
+    prediction,
+    selectedLanguage,
+  }) => {
+    const groq =
+      getGroqClient();
+
+    const modelName =
+      process.env
+        .GROQ_MODEL
+        ?.trim();
+
+    if (
+      !groq ||
+      !modelName
+    ) {
+      throw new Error(
+        "GROQ_API_KEY or GROQ_MODEL is missing."
+      );
+    }
+
+    const languageName =
+      LANGUAGE_NAMES[
+        selectedLanguage
+      ] || "English";
+
+    const prompt = `
+You are AgriSense AI, an Indian crop disease guidance assistant.
+
+A plant disease image-classification model analyzed an uploaded crop image.
+
+Top prediction:
+${prediction.label}
+
+Model confidence:
+${normalizeConfidence(
+  prediction.score
+)}
+
+Other possible predictions:
+${JSON.stringify(
+  prediction.alternatives
+)}
+
+Required response language:
+${languageName}
+
+Return exactly one valid JSON object:
+
+{
+  "disease": "Disease or visible crop problem",
+  "confidence": "Confidence percentage",
+  "cause": "Likely cause",
+  "symptoms": [
+    "Symptom 1",
+    "Symptom 2",
+    "Symptom 3"
+  ],
+  "treatment": "Safe practical treatment guidance",
+  "prevention": "Prevention guidance",
+  "narration": "Short farmer-friendly spoken summary"
+}
+
+Strict rules:
+
+1. Write every user-facing value in ${languageName}.
+2. Keep JSON property names in English.
+3. Use the classifier prediction as the primary disease result.
+4. Do not claim certainty when confidence is low.
+5. Include exactly three concise symptoms.
+6. Give safe farmer-friendly guidance.
+7. Do not recommend banned, restricted, or highly hazardous pesticides.
+8. Do not provide exact pesticide dosage.
+9. Mention that pesticide products must be used according to their label and local agriculture officer guidance.
+10. Mention agriculture officer or laboratory confirmation when confidence is low.
+11. Do not use markdown.
+12. Do not use code blocks.
+13. Return valid JSON only.
+`;
+
+    const completion =
+      await groq.chat
+        .completions
+        .create({
+          model:
+            modelName,
+
+          temperature:
+            0.2,
+
+          max_completion_tokens:
+            1500,
+
+          messages: [
+            {
+              role:
+                "system",
+
+              content:
+                "Return strict JSON only. Give safe Indian agriculture guidance.",
+            },
+
+            {
+              role:
+                "user",
+
+              content:
+                prompt,
+            },
+          ],
+        });
+
+    const responseText =
+      completion
+        ?.choices?.[0]
+        ?.message?.content ||
+      "";
+
+    if (
+      !responseText.trim()
+    ) {
+      throw new Error(
+        "Groq returned an empty disease guidance response."
+      );
+    }
+
+    return extractJson(
+      responseText
     );
-  }
+  };
 
-  return (
-    originalMessage ||
-    "Disease detection failed."
-  );
-};
-
-/*
-  Disease detection controller
-*/
 const detectDisease = async (
   req,
   res
 ) => {
   console.log(
-    "========== DISEASE CONTROLLER RUNNING =========="
+    "========== HUGGING FACE DISEASE CONTROLLER RUNNING =========="
   );
 
   try {
-    /*
-      Step 1: Validate uploaded file
-    */
     if (!req.file) {
       return res.status(400).json({
         success: false,
         error:
+          "Please upload a crop image.",
+        message:
           "Please upload a crop image.",
       });
     }
@@ -257,6 +482,8 @@ const detectDisease = async (
         success: false,
         error:
           "The uploaded file must be an image.",
+        message:
+          "The uploaded file must be an image.",
       });
     }
 
@@ -268,54 +495,11 @@ const detectDisease = async (
         success: false,
         error:
           "The uploaded image file is empty.",
+        message:
+          "The uploaded image file is empty.",
       });
     }
 
-    /*
-      Step 2: Validate Gemini API key
-    */
-    const apiKey =
-      process.env
-        .GEMINI_API_KEY
-        ?.trim();
-
-    if (!apiKey) {
-      return res.status(500).json({
-        success: false,
-        error:
-          "GEMINI_API_KEY is missing in the backend environment variables.",
-      });
-    }
-
-    /*
-      Step 3: Validate Gemini model
-    */
-    const modelName =
-      process.env
-        .GEMINI_MODEL
-        ?.trim();
-
-    if (!modelName) {
-      return res.status(500).json({
-        success: false,
-        error:
-          "GEMINI_MODEL is missing. Set an image-capable Gemini model available for your API project.",
-      });
-    }
-
-    console.log(
-      "Gemini API key loaded:",
-      true
-    );
-
-    console.log(
-      "Gemini model:",
-      modelName
-    );
-
-    /*
-      Step 4: Select language
-    */
     const requestedLanguage =
       req.body?.language ||
       "en-IN";
@@ -327,53 +511,8 @@ const detectDisease = async (
         ? requestedLanguage
         : "en-IN";
 
-    const languageName =
-      LANGUAGE_NAMES[
-        selectedLanguage
-      ];
-
-    /*
-      Step 5: Create Gemini client
-    */
-    const genAI =
-      new GoogleGenerativeAI(
-        apiKey
-      );
-
-    const model =
-      genAI.getGenerativeModel({
-        model:
-          modelName,
-
-        generationConfig: {
-          temperature:
-            0.2,
-
-          maxOutputTokens:
-            1800,
-
-          responseMimeType:
-            "application/json",
-        },
-      });
-
-    /*
-      Step 6: Prepare image
-    */
-    const imagePart = {
-      inlineData: {
-        data:
-          req.file.buffer.toString(
-            "base64"
-          ),
-
-        mimeType:
-          req.file.mimetype,
-      },
-    };
-
     console.log(
-      "Uploaded image details:",
+      "Uploaded image:",
       {
         originalName:
           req.file.originalname,
@@ -383,144 +522,47 @@ const detectDisease = async (
 
         size:
           req.file.size,
+
+        language:
+          selectedLanguage,
       }
     );
 
-    /*
-      Step 7: Disease analysis prompt
-    */
-    const prompt = `
-You are AgriSense AI, an Indian crop disease analysis assistant.
-
-Carefully analyze the actual uploaded crop, plant, leaf, fruit, stem, or field image.
-
-Required response language:
-${languageName}
-
-Return ONLY one valid JSON object.
-
-Do not write markdown.
-Do not use code blocks.
-Do not write any explanation before or after the JSON.
-
-Use exactly this JSON structure:
-
-{
-  "disease": "Detected disease name or visible crop problem",
-  "confidence": "Realistic confidence percentage",
-  "cause": "Likely cause of the problem",
-  "symptoms": [
-    "Visible symptom 1",
-    "Visible symptom 2",
-    "Visible symptom 3"
-  ],
-  "treatment": "Safe and practical treatment guidance",
-  "prevention": "Prevention guidance",
-  "narration": "Short farmer-friendly spoken summary"
-}
-
-Strict rules:
-
-1. Write all user-facing JSON values in ${languageName}.
-2. Keep JSON property names in English.
-3. Analyze only what is visible in the uploaded image.
-4. Do not invent a disease when image evidence is unclear.
-5. If identification is uncertain, clearly mention uncertainty.
-6. If the uploaded image is not related to a plant or crop, state that crop disease identification is not possible.
-7. Confidence must be realistic and must not automatically be 100%.
-8. Include exactly three short visible symptoms whenever possible.
-9. Give safe, practical, farmer-friendly guidance.
-10. Do not recommend banned, restricted, or highly hazardous pesticides.
-11. Do not provide exact pesticide dosage.
-12. State that pesticide products must be used according to their label and local agriculture officer guidance.
-13. Mention agriculture officer or laboratory confirmation when the disease is uncertain.
-14. Do not stop sentences halfway.
-15. Return valid JSON only.
-`;
-
-    /*
-      Step 8: Send prompt and image
-    */
-    const result =
-      await model.generateContent([
-        {
-          text: prompt,
-        },
-        imagePart,
-      ]);
-
-    /*
-      Step 9: Inspect Gemini response
-    */
-    const candidate =
-      result
-        ?.response
-        ?.candidates?.[0];
-
-    const finishReason =
-      candidate
-        ?.finishReason ||
-      "UNKNOWN";
-
-    console.log(
-      "Gemini finish reason:",
-      finishReason
-    );
-
-    console.log(
-      "Gemini safety ratings:",
-      candidate
-        ?.safetyRatings ||
-        []
-    );
-
-    const responseText =
-      result
-        ?.response
-        ?.text?.() ||
-      "";
-
-    console.log(
-      "Gemini raw response:",
-      responseText
-    );
-
-    if (
-      !responseText.trim()
-    ) {
-      throw new Error(
-        `Gemini returned an empty response. Finish reason: ${finishReason}`
+    const prediction =
+      await classifyImageWithHuggingFace(
+        req.file
       );
-    }
 
-    /*
-      Step 10: Convert Gemini response to JSON
-    */
+    console.log(
+      "Hugging Face prediction:",
+      prediction
+    );
+
     const aiData =
-      extractJson(
-        responseText
-      );
+      await generateDiseaseGuidance({
+        prediction,
+        selectedLanguage,
+      });
 
-    /*
-      Step 11: Validate final output
-    */
     const finalResult = {
       disease:
         getString(
           aiData.disease,
-          "Unable to identify accurately"
+          prediction.label
         ),
 
       confidence:
         getString(
           aiData.confidence,
-          "Low"
+          normalizeConfidence(
+            prediction.score
+          )
         ),
 
       cause:
         getString(
           aiData.cause,
-          "The exact cause could not be determined."
+          "The exact cause requires field inspection."
         ),
 
       symptoms:
@@ -543,16 +585,16 @@ Strict rules:
       narration:
         getString(
           aiData.narration,
-          "The image analysis has been completed."
+          `${prediction.label} was identified as the most likely crop problem.`
         ),
 
       fallback:
         false,
+
+      source:
+        "Hugging Face image classification and Groq guidance",
     };
 
-    /*
-      Step 12: Send success response
-    */
     return res
       .status(200)
       .json({
@@ -566,58 +608,70 @@ Strict rules:
           finalResult,
 
         debug: {
-          model:
-            modelName,
+          imageModel:
+            process.env
+              .HUGGINGFACE_MODEL,
 
-          finishReason,
+          textModel:
+            process.env
+              .GROQ_MODEL,
+
+          rawPrediction:
+            prediction,
         },
       });
   } catch (error) {
     console.error(
-      "========== FULL DISEASE ERROR =========="
+      "========== DISEASE DETECTION ERROR =========="
     );
 
     console.error(error);
 
-    console.error(
-      "Error name:",
-      error?.name
-    );
-
-    console.error(
-      "Error status:",
-      error?.status
-    );
-
-    console.error(
-      "Error message:",
-      error?.message
-    );
-
-    console.error(
-      "Error cause:",
-      error?.cause
-    );
-
-    console.error(
-      "========================================"
-    );
+    const status =
+      Number(
+        error?.response?.status ||
+        error?.status
+      );
 
     const originalMessage =
+      error?.response?.data?.error ||
+      error?.response?.data
+        ?.message ||
       error?.message ||
-      String(error) ||
-      "Disease detection failed.";
+      String(error);
 
-    const statusCode =
-      getErrorStatus(
-        error
-      );
+    let statusCode =
+      Number.isInteger(status) &&
+      status >= 400 &&
+      status <= 599
+        ? status
+        : 500;
 
-    const friendlyError =
-      getFriendlyError(
-        statusCode,
-        originalMessage
-      );
+    let friendlyMessage =
+      originalMessage;
+
+    if (
+      statusCode === 401 ||
+      statusCode === 403
+    ) {
+      friendlyMessage =
+        "Hugging Face authentication failed. Check HUGGINGFACE_API_KEY.";
+    } else if (
+      statusCode === 404
+    ) {
+      friendlyMessage =
+        "The configured Hugging Face model or inference endpoint was not found.";
+    } else if (
+      statusCode === 429
+    ) {
+      friendlyMessage =
+        "Hugging Face request limit was reached. Please try again later.";
+    } else if (
+      statusCode === 503
+    ) {
+      friendlyMessage =
+        "The Hugging Face model is loading. Please wait and try again.";
+    }
 
     return res
       .status(statusCode)
@@ -626,7 +680,10 @@ Strict rules:
           false,
 
         error:
-          friendlyError,
+          friendlyMessage,
+
+        message:
+          friendlyMessage,
 
         details:
           originalMessage,

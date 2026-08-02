@@ -1,21 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import axios from "axios";
 import toast from "react-hot-toast";
 
-import { recommendCrop } from "../services/cropService";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { speakText } from "../utils/speech";
 import { useSettings } from "../context/SettingsContext";
+import { recommendCrop } from "../services/cropService";
+import { speakText } from "../utils/speech";
 
 const translations = {
   "en-IN": {
     pageTitle: "Crop Recommendation",
     subtitle:
-      "Get AI-powered crop recommendations based on your farming conditions.",
+      "Allow location access and receive AI-powered crop recommendations using local weather.",
 
     soilType: "Soil Type",
     season: "Season",
-    rainfall: "Rainfall (mm)",
-    temperature: "Temperature (°C)",
 
     clay: "Clay",
     black: "Black",
@@ -26,21 +30,48 @@ const translations = {
     rabi: "Rabi",
     zaid: "Zaid",
 
-    rainfallPlaceholder: "Example: 120",
-    temperaturePlaceholder: "Example: 28",
+    locationTitle: "Current Location",
+    weatherTitle: "Local Weather",
+    rainfall: "Rainfall",
+    temperature: "Temperature",
 
-    getRecommendation: "Get Recommendation",
-    gettingRecommendation: "Getting Recommendation...",
+    useLocation: "Use Current Location",
+    refreshLocation: "Refresh Location",
+    locating: "Finding your location...",
+    locationNotLoaded: "Location not loaded",
 
-    emptyTitle: "AI Crop Advisor",
+    locationPermissionDenied:
+      "Location permission was denied. Allow location access in the browser and try again.",
+
+    locationUnsupported:
+      "This browser does not support location access.",
+
+    weatherLoaded:
+      "Location and weather loaded",
+
+    weatherFailed:
+      "Unable to load weather for this location",
+
+    weatherRequired:
+      "Please load your current location first",
+
+    getRecommendation:
+      "Get Recommendation",
+
+    gettingRecommendation:
+      "Getting Recommendation...",
+
+    recommendationReady:
+      "AI recommendation ready",
+
+    recommendationFailed:
+      "Recommendation failed",
+
+    emptyTitle:
+      "AI Crop Advisor",
+
     emptyDescription:
-      "Fill the details above and receive an intelligent crop recommendation.",
-
-    fillAllFields: "Please fill all fields",
-    invalidRainfall: "Please enter valid rainfall",
-    invalidTemperature: "Please enter a valid temperature",
-    recommendationReady: "AI recommendation ready",
-    recommendationFailed: "Recommendation failed",
+      "Select the soil type and season, then use your location to receive a recommendation.",
 
     confidence: "Confidence",
     whyCrop: "Why this Crop?",
@@ -54,20 +85,22 @@ const translations = {
     listen: "Listen",
     stop: "Stop",
     voiceOff: "Voice Off",
+
     voiceDisabled:
       "Voice responses are turned off in Profile settings",
-    noSummary: "No summary is available",
+
+    noSummary:
+      "No summary is available",
   },
 
   "te-IN": {
     pageTitle: "పంట సిఫార్సు",
+
     subtitle:
-      "మీ వ్యవసాయ పరిస్థితుల ఆధారంగా AI పంట సిఫార్సులను పొందండి.",
+      "లొకేషన్ అనుమతి ఇచ్చి, మీ ప్రాంత వాతావరణం ఆధారంగా AI పంట సిఫార్సు పొందండి.",
 
     soilType: "నేల రకం",
     season: "కాలం",
-    rainfall: "వర్షపాతం (మి.మీ)",
-    temperature: "ఉష్ణోగ్రత (°C)",
 
     clay: "బంకమట్టి నేల",
     black: "నల్ల నేల",
@@ -78,48 +111,89 @@ const translations = {
     rabi: "రబీ",
     zaid: "జైద్",
 
-    rainfallPlaceholder: "ఉదాహరణ: 120",
-    temperaturePlaceholder: "ఉదాహరణ: 28",
+    locationTitle: "ప్రస్తుత లొకేషన్",
+    weatherTitle: "స్థానిక వాతావరణం",
+    rainfall: "వర్షపాతం",
+    temperature: "ఉష్ణోగ్రత",
 
-    getRecommendation: "పంట సిఫార్సు పొందండి",
-    gettingRecommendation: "సిఫార్సు సిద్ధమవుతోంది...",
+    useLocation:
+      "ప్రస్తుత లొకేషన్ ఉపయోగించండి",
 
-    emptyTitle: "AI పంట సలహాదారు",
+    refreshLocation:
+      "లొకేషన్ మళ్లీ పొందండి",
+
+    locating:
+      "మీ లొకేషన్ గుర్తిస్తున్నాము...",
+
+    locationNotLoaded:
+      "లొకేషన్ ఇంకా పొందలేదు",
+
+    locationPermissionDenied:
+      "లొకేషన్ అనుమతి ఇవ్వలేదు. బ్రౌజర్‌లో లొకేషన్ అనుమతించి మళ్లీ ప్రయత్నించండి.",
+
+    locationUnsupported:
+      "ఈ బ్రౌజర్‌లో లొకేషన్ సౌకర్యం లేదు.",
+
+    weatherLoaded:
+      "లొకేషన్ మరియు వాతావరణ వివరాలు వచ్చాయి",
+
+    weatherFailed:
+      "ఈ లొకేషన్‌కు వాతావరణ వివరాలు పొందలేకపోయాము",
+
+    weatherRequired:
+      "ముందుగా మీ ప్రస్తుత లొకేషన్ పొందండి",
+
+    getRecommendation:
+      "పంట సిఫార్సు పొందండి",
+
+    gettingRecommendation:
+      "సిఫార్సు సిద్ధమవుతోంది...",
+
+    recommendationReady:
+      "AI సిఫార్సు సిద్ధమైంది",
+
+    recommendationFailed:
+      "సిఫార్సు పొందడం విఫలమైంది",
+
+    emptyTitle:
+      "AI పంట సలహాదారు",
+
     emptyDescription:
-      "పై వివరాలను నమోదు చేసి సరైన పంట సిఫార్సును పొందండి.",
-
-    fillAllFields: "అన్ని వివరాలను నమోదు చేయండి",
-    invalidRainfall: "సరైన వర్షపాతం నమోదు చేయండి",
-    invalidTemperature: "సరైన ఉష్ణోగ్రత నమోదు చేయండి",
-    recommendationReady: "AI సిఫార్సు సిద్ధమైంది",
-    recommendationFailed: "సిఫార్సు పొందడం విఫలమైంది",
+      "నేల రకం, కాలం ఎంచుకుని మీ లొకేషన్ ద్వారా పంట సిఫార్సు పొందండి.",
 
     confidence: "నమ్మక స్థాయి",
     whyCrop: "ఈ పంట ఎందుకు?",
     fertilizer: "ఎరువుల సూచన",
-    pesticide: "సిఫార్సు చేసిన పురుగుమందు",
-    irrigation: "నీటిపారుదల సూచన",
-    expectedYield: "అంచనా దిగుబడి",
-    farmingTips: "వ్యవసాయ సూచనలు",
-    aiSummary: "AI సారాంశం",
+    pesticide:
+      "సిఫార్సు చేసిన పురుగుమందు",
+    irrigation:
+      "నీటిపారుదల సూచన",
+    expectedYield:
+      "అంచనా దిగుబడి",
+    farmingTips:
+      "వ్యవసాయ సూచనలు",
+    aiSummary:
+      "AI సారాంశం",
 
     listen: "వినండి",
     stop: "ఆపండి",
     voiceOff: "వాయిస్ ఆఫ్",
+
     voiceDisabled:
       "ప్రొఫైల్ సెట్టింగ్స్‌లో వాయిస్ స్పందనలు ఆఫ్‌లో ఉన్నాయి",
-    noSummary: "వినడానికి సారాంశం అందుబాటులో లేదు",
+
+    noSummary:
+      "వినడానికి సారాంశం అందుబాటులో లేదు",
   },
 
   "hi-IN": {
     pageTitle: "फसल अनुशंसा",
+
     subtitle:
-      "अपनी कृषि परिस्थितियों के आधार पर AI फसल सुझाव प्राप्त करें।",
+      "स्थान की अनुमति दें और स्थानीय मौसम के आधार पर AI फसल सुझाव प्राप्त करें।",
 
     soilType: "मिट्टी का प्रकार",
     season: "मौसम",
-    rainfall: "वर्षा (मिमी)",
-    temperature: "तापमान (°C)",
 
     clay: "चिकनी मिट्टी",
     black: "काली मिट्टी",
@@ -130,48 +204,89 @@ const translations = {
     rabi: "रबी",
     zaid: "जायद",
 
-    rainfallPlaceholder: "उदाहरण: 120",
-    temperaturePlaceholder: "उदाहरण: 28",
+    locationTitle: "वर्तमान स्थान",
+    weatherTitle: "स्थानीय मौसम",
+    rainfall: "वर्षा",
+    temperature: "तापमान",
 
-    getRecommendation: "फसल सुझाव प्राप्त करें",
-    gettingRecommendation: "सुझाव तैयार हो रहा है...",
+    useLocation:
+      "वर्तमान स्थान का उपयोग करें",
 
-    emptyTitle: "AI फसल सलाहकार",
+    refreshLocation:
+      "स्थान फिर से प्राप्त करें",
+
+    locating:
+      "आपका स्थान खोजा जा रहा है...",
+
+    locationNotLoaded:
+      "स्थान अभी लोड नहीं हुआ",
+
+    locationPermissionDenied:
+      "स्थान की अनुमति नहीं दी गई। ब्राउज़र में अनुमति देकर फिर प्रयास करें।",
+
+    locationUnsupported:
+      "यह ब्राउज़र स्थान सुविधा का समर्थन नहीं करता।",
+
+    weatherLoaded:
+      "स्थान और मौसम लोड हो गया",
+
+    weatherFailed:
+      "इस स्थान का मौसम प्राप्त नहीं हुआ",
+
+    weatherRequired:
+      "पहले अपना वर्तमान स्थान लोड करें",
+
+    getRecommendation:
+      "फसल सुझाव प्राप्त करें",
+
+    gettingRecommendation:
+      "सुझाव तैयार हो रहा है...",
+
+    recommendationReady:
+      "AI सुझाव तैयार है",
+
+    recommendationFailed:
+      "सुझाव प्राप्त नहीं हुआ",
+
+    emptyTitle:
+      "AI फसल सलाहकार",
+
     emptyDescription:
-      "ऊपर दिए गए विवरण भरें और फसल सुझाव प्राप्त करें।",
-
-    fillAllFields: "सभी विवरण भरें",
-    invalidRainfall: "सही वर्षा मान दर्ज करें",
-    invalidTemperature: "सही तापमान दर्ज करें",
-    recommendationReady: "AI सुझाव तैयार है",
-    recommendationFailed: "सुझाव प्राप्त नहीं हुआ",
+      "मिट्टी और मौसम चुनें, फिर अपने स्थान से फसल सुझाव प्राप्त करें।",
 
     confidence: "विश्वास स्तर",
     whyCrop: "यह फसल क्यों?",
     fertilizer: "उर्वरक",
-    pesticide: "अनुशंसित कीटनाशक",
-    irrigation: "सिंचाई सलाह",
-    expectedYield: "अनुमानित उपज",
-    farmingTips: "खेती के सुझाव",
-    aiSummary: "AI सारांश",
+    pesticide:
+      "अनुशंसित कीटनाशक",
+    irrigation:
+      "सिंचाई सलाह",
+    expectedYield:
+      "अनुमानित उपज",
+    farmingTips:
+      "खेती के सुझाव",
+    aiSummary:
+      "AI सारांश",
 
     listen: "सुनें",
     stop: "रोकें",
     voiceOff: "आवाज़ बंद",
+
     voiceDisabled:
       "प्रोफाइल सेटिंग्स में आवाज़ प्रतिक्रियाएं बंद हैं",
-    noSummary: "कोई सारांश उपलब्ध नहीं है",
+
+    noSummary:
+      "कोई सारांश उपलब्ध नहीं है",
   },
 
   "ta-IN": {
     pageTitle: "பயிர் பரிந்துரை",
+
     subtitle:
-      "உங்கள் விவசாய நிலைமைகளின் அடிப்படையில் AI பயிர் பரிந்துரைகளைப் பெறுங்கள்.",
+      "இருப்பிட அனுமதி அளித்து உள்ளூர் வானிலையின் அடிப்படையில் AI பயிர் பரிந்துரையைப் பெறுங்கள்.",
 
     soilType: "மண் வகை",
     season: "பருவம்",
-    rainfall: "மழைப்பொழிவு (மி.மீ)",
-    temperature: "வெப்பநிலை (°C)",
 
     clay: "களிமண்",
     black: "கருப்பு மண்",
@@ -182,48 +297,107 @@ const translations = {
     rabi: "ரபி",
     zaid: "சயித்",
 
-    rainfallPlaceholder: "உதாரணம்: 120",
-    temperaturePlaceholder: "உதாரணம்: 28",
+    locationTitle:
+      "தற்போதைய இருப்பிடம்",
 
-    getRecommendation: "பரிந்துரை பெறுங்கள்",
-    gettingRecommendation: "பரிந்துரை தயாராகிறது...",
+    weatherTitle:
+      "உள்ளூர் வானிலை",
 
-    emptyTitle: "AI பயிர் ஆலோசகர்",
+    rainfall:
+      "மழைப்பொழிவு",
+
+    temperature:
+      "வெப்பநிலை",
+
+    useLocation:
+      "தற்போதைய இருப்பிடத்தை பயன்படுத்தவும்",
+
+    refreshLocation:
+      "இருப்பிடத்தை புதுப்பிக்கவும்",
+
+    locating:
+      "உங்கள் இருப்பிடம் கண்டறியப்படுகிறது...",
+
+    locationNotLoaded:
+      "இருப்பிடம் இன்னும் ஏற்றப்படவில்லை",
+
+    locationPermissionDenied:
+      "இருப்பிட அனுமதி மறுக்கப்பட்டது. உலாவியில் அனுமதி அளித்து மீண்டும் முயற்சிக்கவும்.",
+
+    locationUnsupported:
+      "இந்த உலாவி இருப்பிட வசதியை ஆதரிக்கவில்லை.",
+
+    weatherLoaded:
+      "இருப்பிடம் மற்றும் வானிலை ஏற்றப்பட்டது",
+
+    weatherFailed:
+      "இந்த இருப்பிடத்திற்கான வானிலை கிடைக்கவில்லை",
+
+    weatherRequired:
+      "முதலில் தற்போதைய இருப்பிடத்தை ஏற்றவும்",
+
+    getRecommendation:
+      "பரிந்துரை பெறுங்கள்",
+
+    gettingRecommendation:
+      "பரிந்துரை தயாராகிறது...",
+
+    recommendationReady:
+      "AI பரிந்துரை தயாராக உள்ளது",
+
+    recommendationFailed:
+      "பரிந்துரை பெற முடியவில்லை",
+
+    emptyTitle:
+      "AI பயிர் ஆலோசகர்",
+
     emptyDescription:
-      "மேலே உள்ள விவரங்களை நிரப்பி பயிர் பரிந்துரையைப் பெறுங்கள்.",
+      "மண் வகை மற்றும் பருவத்தை தேர்வு செய்து இருப்பிடத்தின் மூலம் பரிந்துரை பெறுங்கள்.",
 
-    fillAllFields: "அனைத்து விவரங்களையும் நிரப்பவும்",
-    invalidRainfall: "சரியான மழைப்பொழிவு அளவை உள்ளிடவும்",
-    invalidTemperature: "சரியான வெப்பநிலையை உள்ளிடவும்",
-    recommendationReady: "AI பரிந்துரை தயாராக உள்ளது",
-    recommendationFailed: "பரிந்துரை பெற முடியவில்லை",
+    confidence:
+      "நம்பிக்கை அளவு",
 
-    confidence: "நம்பிக்கை அளவு",
-    whyCrop: "இந்தப் பயிர் ஏன்?",
+    whyCrop:
+      "இந்தப் பயிர் ஏன்?",
+
     fertilizer: "உரம்",
-    pesticide: "பரிந்துரைக்கப்பட்ட பூச்சிக்கொல்லி",
-    irrigation: "நீர்ப்பாசன ஆலோசனை",
-    expectedYield: "எதிர்பார்க்கப்படும் விளைச்சல்",
-    farmingTips: "விவசாய குறிப்புகள்",
-    aiSummary: "AI சுருக்கம்",
+
+    pesticide:
+      "பரிந்துரைக்கப்பட்ட பூச்சிக்கொல்லி",
+
+    irrigation:
+      "நீர்ப்பாசன ஆலோசனை",
+
+    expectedYield:
+      "எதிர்பார்க்கப்படும் விளைச்சல்",
+
+    farmingTips:
+      "விவசாய குறிப்புகள்",
+
+    aiSummary:
+      "AI சுருக்கம்",
 
     listen: "கேட்க",
     stop: "நிறுத்து",
     voiceOff: "குரல் முடக்கம்",
+
     voiceDisabled:
       "சுயவிவர அமைப்புகளில் குரல் பதில்கள் முடக்கப்பட்டுள்ளன",
-    noSummary: "சுருக்கம் கிடைக்கவில்லை",
+
+    noSummary:
+      "சுருக்கம் கிடைக்கவில்லை",
   },
 
   "kn-IN": {
     pageTitle: "ಬೆಳೆ ಶಿಫಾರಸು",
-    subtitle:
-      "ನಿಮ್ಮ ಕೃಷಿ ಪರಿಸ್ಥಿತಿಗಳ ಆಧಾರದ ಮೇಲೆ AI ಬೆಳೆ ಶಿಫಾರಸುಗಳನ್ನು ಪಡೆಯಿರಿ.",
 
-    soilType: "ಮಣ್ಣಿನ ಪ್ರಕಾರ",
+    subtitle:
+      "ಸ್ಥಳ ಅನುಮತಿ ನೀಡಿ ಸ್ಥಳೀಯ ಹವಾಮಾನದ ಆಧಾರದ ಮೇಲೆ AI ಬೆಳೆ ಶಿಫಾರಸು ಪಡೆಯಿರಿ.",
+
+    soilType:
+      "ಮಣ್ಣಿನ ಪ್ರಕಾರ",
+
     season: "ಋತು",
-    rainfall: "ಮಳೆಯ ಪ್ರಮಾಣ (ಮಿಮೀ)",
-    temperature: "ತಾಪಮಾನ (°C)",
 
     clay: "ಜೇಡಿ ಮಣ್ಣು",
     black: "ಕಪ್ಪು ಮಣ್ಣು",
@@ -234,48 +408,108 @@ const translations = {
     rabi: "ರಬಿ",
     zaid: "ಜೈದ್",
 
-    rainfallPlaceholder: "ಉದಾಹರಣೆ: 120",
-    temperaturePlaceholder: "ಉದಾಹರಣೆ: 28",
+    locationTitle:
+      "ಪ್ರಸ್ತುತ ಸ್ಥಳ",
 
-    getRecommendation: "ಬೆಳೆ ಶಿಫಾರಸು ಪಡೆಯಿರಿ",
-    gettingRecommendation: "ಶಿಫಾರಸು ಸಿದ್ಧವಾಗುತ್ತಿದೆ...",
+    weatherTitle:
+      "ಸ್ಥಳೀಯ ಹವಾಮಾನ",
 
-    emptyTitle: "AI ಬೆಳೆ ಸಲಹೆಗಾರ",
+    rainfall:
+      "ಮಳೆಯ ಪ್ರಮಾಣ",
+
+    temperature:
+      "ತಾಪಮಾನ",
+
+    useLocation:
+      "ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ",
+
+    refreshLocation:
+      "ಸ್ಥಳವನ್ನು ಮರುಪಡೆಯಿರಿ",
+
+    locating:
+      "ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ಹುಡುಕಲಾಗುತ್ತಿದೆ...",
+
+    locationNotLoaded:
+      "ಸ್ಥಳ ಇನ್ನೂ ಲೋಡ್ ಆಗಿಲ್ಲ",
+
+    locationPermissionDenied:
+      "ಸ್ಥಳ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ. ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಅನುಮತಿ ನೀಡಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+
+    locationUnsupported:
+      "ಈ ಬ್ರೌಸರ್ ಸ್ಥಳ ಸೌಲಭ್ಯವನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ.",
+
+    weatherLoaded:
+      "ಸ್ಥಳ ಮತ್ತು ಹವಾಮಾನ ಲೋಡ್ ಆಗಿದೆ",
+
+    weatherFailed:
+      "ಈ ಸ್ಥಳದ ಹವಾಮಾನ ಪಡೆಯಲಾಗಲಿಲ್ಲ",
+
+    weatherRequired:
+      "ಮೊದಲು ಪ್ರಸ್ತುತ ಸ್ಥಳವನ್ನು ಲೋಡ್ ಮಾಡಿ",
+
+    getRecommendation:
+      "ಬೆಳೆ ಶಿಫಾರಸು ಪಡೆಯಿರಿ",
+
+    gettingRecommendation:
+      "ಶಿಫಾರಸು ಸಿದ್ಧವಾಗುತ್ತಿದೆ...",
+
+    recommendationReady:
+      "AI ಶಿಫಾರಸು ಸಿದ್ಧವಾಗಿದೆ",
+
+    recommendationFailed:
+      "ಶಿಫಾರಸು ಪಡೆಯಲು ವಿಫಲವಾಗಿದೆ",
+
+    emptyTitle:
+      "AI ಬೆಳೆ ಸಲಹೆಗಾರ",
+
     emptyDescription:
-      "ಮೇಲಿನ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ ಬೆಳೆ ಶಿಫಾರಸನ್ನು ಪಡೆಯಿರಿ.",
+      "ಮಣ್ಣಿನ ಪ್ರಕಾರ ಮತ್ತು ಋತುವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಸ್ಥಳದ ಮೂಲಕ ಶಿಫಾರಸು ಪಡೆಯಿರಿ.",
 
-    fillAllFields: "ಎಲ್ಲ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ",
-    invalidRainfall: "ಸರಿಯಾದ ಮಳೆಯ ಪ್ರಮಾಣ ನಮೂದಿಸಿ",
-    invalidTemperature: "ಸರಿಯಾದ ತಾಪಮಾನ ನಮೂದಿಸಿ",
-    recommendationReady: "AI ಶಿಫಾರಸು ಸಿದ್ಧವಾಗಿದೆ",
-    recommendationFailed: "ಶಿಫಾರಸು ಪಡೆಯಲು ವಿಫಲವಾಗಿದೆ",
+    confidence:
+      "ವಿಶ್ವಾಸ ಮಟ್ಟ",
 
-    confidence: "ವಿಶ್ವಾಸ ಮಟ್ಟ",
-    whyCrop: "ಈ ಬೆಳೆ ಏಕೆ?",
-    fertilizer: "ರಸಗೊಬ್ಬರ",
-    pesticide: "ಶಿಫಾರಸು ಮಾಡಿದ ಕೀಟನಾಶಕ",
-    irrigation: "ನೀರಾವರಿ ಸಲಹೆ",
-    expectedYield: "ನಿರೀಕ್ಷಿತ ಇಳುವರಿ",
-    farmingTips: "ಕೃಷಿ ಸಲಹೆಗಳು",
-    aiSummary: "AI ಸಾರಾಂಶ",
+    whyCrop:
+      "ಈ ಬೆಳೆ ಏಕೆ?",
+
+    fertilizer:
+      "ರಸಗೊಬ್ಬರ",
+
+    pesticide:
+      "ಶಿಫಾರಸು ಮಾಡಿದ ಕೀಟನಾಶಕ",
+
+    irrigation:
+      "ನೀರಾವರಿ ಸಲಹೆ",
+
+    expectedYield:
+      "ನಿರೀಕ್ಷಿತ ಇಳುವರಿ",
+
+    farmingTips:
+      "ಕೃಷಿ ಸಲಹೆಗಳು",
+
+    aiSummary:
+      "AI ಸಾರಾಂಶ",
 
     listen: "ಆಲಿಸಿ",
     stop: "ನಿಲ್ಲಿಸಿ",
     voiceOff: "ಧ್ವನಿ ಆಫ್",
+
     voiceDisabled:
       "ಪ್ರೊಫೈಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಧ್ವನಿ ಪ್ರತಿಕ್ರಿಯೆಗಳು ಆಫ್ ಆಗಿವೆ",
-    noSummary: "ಸಾರಾಂಶ ಲಭ್ಯವಿಲ್ಲ",
+
+    noSummary:
+      "ಸಾರಾಂಶ ಲಭ್ಯವಿಲ್ಲ",
   },
 
   "ml-IN": {
     pageTitle: "വിള ശുപാർശ",
-    subtitle:
-      "നിങ്ങളുടെ കൃഷി സാഹചര്യങ്ങളെ അടിസ്ഥാനമാക്കി AI വിള ശുപാർശകൾ നേടുക.",
 
-    soilType: "മണ്ണിന്റെ തരം",
+    subtitle:
+      "ലൊക്കേഷൻ അനുമതി നൽകി പ്രാദേശിക കാലാവസ്ഥയുടെ അടിസ്ഥാനത്തിൽ AI വിള ശുപാർശ നേടുക.",
+
+    soilType:
+      "മണ്ണിന്റെ തരം",
+
     season: "കാലം",
-    rainfall: "മഴയുടെ അളവ് (മിമീ)",
-    temperature: "താപനില (°C)",
 
     clay: "കളിമണ്ണ്",
     black: "കറുത്ത മണ്ണ്",
@@ -286,158 +520,531 @@ const translations = {
     rabi: "റാബി",
     zaid: "സൈദ്",
 
-    rainfallPlaceholder: "ഉദാഹരണം: 120",
-    temperaturePlaceholder: "ഉദാഹരണം: 28",
+    locationTitle:
+      "നിലവിലെ സ്ഥലം",
 
-    getRecommendation: "വിള ശുപാർശ നേടുക",
-    gettingRecommendation: "ശുപാർശ തയ്യാറാക്കുന്നു...",
+    weatherTitle:
+      "പ്രാദേശിക കാലാവസ്ഥ",
 
-    emptyTitle: "AI വിള ഉപദേഷ്ടാവ്",
+    rainfall:
+      "മഴയുടെ അളവ്",
+
+    temperature:
+      "താപനില",
+
+    useLocation:
+      "നിലവിലെ സ്ഥലം ഉപയോഗിക്കുക",
+
+    refreshLocation:
+      "സ്ഥലം വീണ്ടും നേടുക",
+
+    locating:
+      "നിങ്ങളുടെ സ്ഥലം കണ്ടെത്തുന്നു...",
+
+    locationNotLoaded:
+      "സ്ഥലം ഇതുവരെ ലോഡ് ചെയ്തിട്ടില്ല",
+
+    locationPermissionDenied:
+      "സ്ഥല അനുമതി നിഷേധിച്ചു. ബ്രൗസറിൽ അനുമതി നൽകി വീണ്ടും ശ്രമിക്കുക.",
+
+    locationUnsupported:
+      "ഈ ബ്രൗസർ ലൊക്കേഷൻ സൗകര്യം പിന്തുണയ്ക്കുന്നില്ല.",
+
+    weatherLoaded:
+      "സ്ഥലവും കാലാവസ്ഥയും ലോഡ് ചെയ്തു",
+
+    weatherFailed:
+      "ഈ സ്ഥലത്തിന്റെ കാലാവസ്ഥ ലഭ്യമല്ല",
+
+    weatherRequired:
+      "ആദ്യം നിലവിലെ സ്ഥലം ലോഡ് ചെയ്യുക",
+
+    getRecommendation:
+      "വിള ശുപാർശ നേടുക",
+
+    gettingRecommendation:
+      "ശുപാർശ തയ്യാറാക്കുന്നു...",
+
+    recommendationReady:
+      "AI ശുപാർശ തയ്യാറായി",
+
+    recommendationFailed:
+      "ശുപാർശ ലഭിച്ചില്ല",
+
+    emptyTitle:
+      "AI വിള ഉപദേഷ്ടാവ്",
+
     emptyDescription:
-      "മുകളിലെ വിവരങ്ങൾ നൽകി വിള ശുപാർശ നേടുക.",
+      "മണ്ണിന്റെ തരവും കാലവും തിരഞ്ഞെടുത്ത് സ്ഥലത്തിന്റെ അടിസ്ഥാനത്തിൽ ശുപാർശ നേടുക.",
 
-    fillAllFields: "എല്ലാ വിവരങ്ങളും നൽകുക",
-    invalidRainfall: "ശരിയായ മഴയുടെ അളവ് നൽകുക",
-    invalidTemperature: "ശരിയായ താപനില നൽകുക",
-    recommendationReady: "AI ശുപാർശ തയ്യാറായി",
-    recommendationFailed: "ശുപാർശ ലഭിച്ചില്ല",
+    confidence:
+      "വിശ്വാസനില",
 
-    confidence: "വിശ്വാസനില",
-    whyCrop: "ഈ വിള എന്തുകൊണ്ട്?",
+    whyCrop:
+      "ഈ വിള എന്തുകൊണ്ട്?",
+
     fertilizer: "വളം",
-    pesticide: "ശുപാർശ ചെയ്ത കീടനാശിനി",
-    irrigation: "ജലസേചന നിർദേശം",
-    expectedYield: "പ്രതീക്ഷിക്കുന്ന വിളവ്",
-    farmingTips: "കൃഷി നിർദേശങ്ങൾ",
-    aiSummary: "AI സംഗ്രഹം",
+
+    pesticide:
+      "ശുപാർശ ചെയ്ത കീടനാശിനി",
+
+    irrigation:
+      "ജലസേചന നിർദേശം",
+
+    expectedYield:
+      "പ്രതീക്ഷിക്കുന്ന വിളവ്",
+
+    farmingTips:
+      "കൃഷി നിർദേശങ്ങൾ",
+
+    aiSummary:
+      "AI സംഗ്രഹം",
 
     listen: "കേൾക്കുക",
     stop: "നിർത്തുക",
     voiceOff: "ശബ്ദം ഓഫ്",
+
     voiceDisabled:
       "പ്രൊഫൈൽ ക്രമീകരണങ്ങളിൽ ശബ്ദ പ്രതികരണങ്ങൾ ഓഫ് ആണ്",
-    noSummary: "സംഗ്രഹം ലഭ്യമല്ല",
+
+    noSummary:
+      "സംഗ്രഹം ലഭ്യമല്ല",
   },
 };
 
+const initialWeatherData = {
+  location: "",
+  rainfall: null,
+  temperature: null,
+  latitude: null,
+  longitude: null,
+};
+
+const getStoredAuthToken = () => {
+  return (
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("authToken") ||
+    ""
+  );
+};
+
 function CropRecommendation() {
-  const [form, setForm] = useState({
-    soilType: "Clay",
-    season: "Kharif",
-    rainfall: "",
-    temperature: "",
-  });
+  const [form, setForm] =
+    useState({
+      soilType: "Clay",
+      season: "Kharif",
+    });
 
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [
+    weatherData,
+    setWeatherData,
+  ] = useState(
+    initialWeatherData
+  );
 
-  const { language, voiceResponsesEnabled } =
-    useSettings();
+  const [
+    weatherLoading,
+    setWeatherLoading,
+  ] = useState(false);
 
-  const text = useMemo(() => {
-    return translations[language] || translations["en-IN"];
-  }, [language]);
+  const [result, setResult] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const {
+    language,
+    voiceResponsesEnabled,
+  } = useSettings();
+
+  const text = useMemo(
+    () =>
+      translations[language] ||
+      translations["en-IN"],
+    [language]
+  );
+
+  const apiBaseUrl = useMemo(
+    () =>
+      String(
+        import.meta.env
+          .VITE_API_URL || ""
+      ).replace(/\/$/, ""),
+    []
+  );
 
   useEffect(() => {
     window.speechSynthesis?.cancel();
     setResult(null);
   }, [language]);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
+  const handleChange = (
+    event
+  ) => {
+    const {
+      name,
+      value,
+    } = event.target;
 
-    setForm((previousForm) => ({
-      ...previousForm,
-      [name]: value,
-    }));
+    setForm(
+      (previousForm) => ({
+        ...previousForm,
+        [name]: value,
+      })
+    );
   };
 
-  const handleSubmit = async () => {
-    if (
-      form.rainfall === "" ||
-      form.temperature === ""
-    ) {
-      toast.error(text.fillAllFields);
-      return;
-    }
+  const fetchCurrentWeather = () => {
+  if (!navigator.geolocation) {
+    toast.error(text.locationUnsupported);
+    return;
+  }
 
-    const rainfall = Number(form.rainfall);
-    const temperature = Number(form.temperature);
+  if (!apiBaseUrl) {
+    toast.error(
+      "VITE_API_URL is missing in the frontend environment variables."
+    );
+    return;
+  }
 
-    if (
-      !Number.isFinite(rainfall) ||
-      rainfall < 0
-    ) {
-      toast.error(text.invalidRainfall);
-      return;
-    }
+  setWeatherLoading(true);
+  setResult(null);
 
-    if (
-      !Number.isFinite(temperature) ||
-      temperature < -20 ||
-      temperature > 60
-    ) {
-      toast.error(text.invalidTemperature);
-      return;
-    }
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const {
+          latitude,
+          longitude,
+        } = position.coords;
 
-    try {
-      setLoading(true);
-      setResult(null);
+        const token =
+          getStoredAuthToken();
 
-      window.speechSynthesis?.cancel();
+        const response =
+          await axios.get(
+            `${apiBaseUrl}/api/weather/location`,
+            {
+              params: {
+                latitude,
+                longitude,
+                language,
+              },
 
-      const data = await recommendCrop({
-        soilType: form.soilType,
-        season: form.season,
-        rainfall,
-        temperature,
-        language,
-      });
+              headers: token
+                ? {
+                    Authorization:
+                      `Bearer ${token}`,
+                  }
+                : undefined,
 
-      setResult(data);
+              withCredentials: false,
+            }
+          );
 
-      toast.success(text.recommendationReady);
+        console.log(
+          "Crop Weather API Response:",
+          response.data
+        );
 
-      if (
-        voiceResponsesEnabled &&
-        data?.narration
-      ) {
-        speakText(data.narration, language);
+        const payload =
+          response?.data?.data ||
+          response?.data ||
+          {};
+
+        console.log(
+          "Crop Weather Location Values:",
+          {
+            localizedCity:
+              payload.localizedCity,
+            city: payload.city,
+            location:
+              payload.location,
+            latitude:
+              payload.latitude,
+            longitude:
+              payload.longitude,
+          }
+        );
+
+        const parsedTemperature =
+          Number(
+            payload.temperature
+          );
+
+        const parsedRainfall =
+          Number(
+            payload.rainfall ??
+              payload.rain ??
+              0
+          );
+
+        if (
+          !Number.isFinite(
+            parsedTemperature
+          )
+        ) {
+          throw new Error(
+            "Weather API did not return a valid temperature."
+          );
+        }
+
+        const savedLocation =
+          localStorage.getItem(
+            "agrisenseCurrentLocation"
+          );
+
+        const apiLocation = String(
+          payload.localizedCity ||
+            payload.city ||
+            "Current Location"
+        ).trim();
+
+        const locationName =
+          savedLocation?.trim() ||
+          apiLocation;
+
+        localStorage.setItem(
+          "agrisenseCurrentLocation",
+          locationName
+        );
+
+        setWeatherData({
+          location:
+            locationName,
+
+          rainfall:
+            Number.isFinite(
+              parsedRainfall
+            )
+              ? parsedRainfall
+              : 0,
+
+          temperature:
+            parsedTemperature,
+
+          latitude:
+            payload.latitude ??
+            latitude,
+
+          longitude:
+            payload.longitude ??
+            longitude,
+        });
+
+        toast.success(
+          text.weatherLoaded
+        );
+      } catch (error) {
+        console.error(
+          "Current weather error:",
+          error
+        );
+
+        setWeatherData(
+          initialWeatherData
+        );
+
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            error?.response?.data
+              ?.error ||
+            error?.message ||
+            text.weatherFailed
+        );
+      } finally {
+        setWeatherLoading(false);
       }
-    } catch (error) {
+    },
+
+    (geolocationError) => {
       console.error(
-        "Crop recommendation error:",
-        error
+        "Geolocation error:",
+        geolocationError
       );
+
+      setWeatherLoading(false);
 
       toast.error(
-        error?.response?.data?.message ||
-          text.recommendationFailed
+        geolocationError.code === 1
+          ? text.locationPermissionDenied
+          : text.weatherFailed
       );
-    } finally {
-      setLoading(false);
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
     }
-  };
+  );
+};
+  
+
+  const handleSubmit =
+    async () => {
+      if (
+        !weatherData.location ||
+        !Number.isFinite(
+          Number(
+            weatherData.temperature
+          )
+        )
+      ) {
+        toast.error(
+          text.weatherRequired
+        );
+
+        return;
+      }
+
+      const rainfall =
+        Number(
+          weatherData.rainfall ??
+            0
+        );
+
+      const temperature =
+        Number(
+          weatherData.temperature
+        );
+
+      if (
+        !Number.isFinite(
+          rainfall
+        ) ||
+        rainfall < 0
+      ) {
+        toast.error(
+          text.weatherFailed
+        );
+
+        return;
+      }
+
+      if (
+        !Number.isFinite(
+          temperature
+        ) ||
+        temperature < -20 ||
+        temperature > 60
+      ) {
+        toast.error(
+          text.weatherFailed
+        );
+
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setResult(null);
+
+        window
+          .speechSynthesis
+          ?.cancel();
+
+        const data =
+          await recommendCrop({
+            soilType:
+              form.soilType,
+
+            season:
+              form.season,
+
+            rainfall,
+
+            temperature,
+
+            location:
+              weatherData.location,
+
+            latitude:
+              weatherData.latitude,
+
+            longitude:
+              weatherData.longitude,
+
+            language,
+          });
+
+        const finalData =
+          data?.result ||
+          data?.data ||
+          data;
+
+        setResult(finalData);
+
+        toast.success(
+          text.recommendationReady
+        );
+
+        if (
+          voiceResponsesEnabled &&
+          finalData?.narration
+        ) {
+          speakText(
+            finalData.narration,
+            language
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Crop recommendation error:",
+          error
+        );
+
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            error?.response?.data
+              ?.error ||
+            text
+              .recommendationFailed
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const handleListen = () => {
-    if (!voiceResponsesEnabled) {
-      toast.error(text.voiceDisabled);
+    if (
+      !voiceResponsesEnabled
+    ) {
+      toast.error(
+        text.voiceDisabled
+      );
+
       return;
     }
 
     if (!result?.narration) {
-      toast.error(text.noSummary);
+      toast.error(
+        text.noSummary
+      );
+
       return;
     }
 
-    window.speechSynthesis?.cancel();
-    speakText(result.narration, language);
+    window
+      .speechSynthesis
+      ?.cancel();
+
+    speakText(
+      result.narration,
+      language
+    );
   };
 
-  const handleStopReading = () => {
-    window.speechSynthesis?.cancel();
-  };
+  const handleStopReading =
+    () => {
+      window
+        .speechSynthesis
+        ?.cancel();
+    };
 
   const soilOptions = [
     {
@@ -473,17 +1080,27 @@ function CropRecommendation() {
     },
   ];
 
+  const weatherReady =
+    Boolean(
+      weatherData.location
+    ) &&
+    Number.isFinite(
+      Number(
+        weatherData.temperature
+      )
+    );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-lime-50 to-yellow-50 p-4 sm:p-8">
       <h1 className="mb-3 text-center text-3xl font-bold text-green-700 sm:text-5xl">
         🌱 {text.pageTitle}
       </h1>
 
-      <p className="mb-10 text-center text-gray-600">
+      <p className="mx-auto mb-10 max-w-3xl text-center text-gray-600">
         {text.subtitle}
       </p>
 
-      <div className="mx-auto max-w-2xl rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
+      <div className="mx-auto max-w-3xl rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
         <div className="grid gap-5 md:grid-cols-2">
           <div>
             <label
@@ -497,17 +1114,25 @@ function CropRecommendation() {
               id="soilType"
               name="soilType"
               value={form.soilType}
-              onChange={handleChange}
+              onChange={
+                handleChange
+              }
               className="mt-2 w-full rounded-xl border-2 border-green-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              {soilOptions.map((option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                >
-                  {option.label}
-                </option>
-              ))}
+              {soilOptions.map(
+                (option) => (
+                  <option
+                    key={
+                      option.value
+                    }
+                    value={
+                      option.value
+                    }
+                  >
+                    {option.label}
+                  </option>
+                )
+              )}
             </select>
           </div>
 
@@ -523,228 +1148,320 @@ function CropRecommendation() {
               id="season"
               name="season"
               value={form.season}
-              onChange={handleChange}
+              onChange={
+                handleChange
+              }
               className="mt-2 w-full rounded-xl border-2 border-green-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              {seasonOptions.map((option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                >
-                  {option.label}
-                </option>
-              ))}
+              {seasonOptions.map(
+                (option) => (
+                  <option
+                    key={
+                      option.value
+                    }
+                    value={
+                      option.value
+                    }
+                  >
+                    {option.label}
+                  </option>
+                )
+              )}
             </select>
           </div>
+        </div>
 
-          <div>
-            <label
-              htmlFor="rainfall"
-              className="font-semibold text-gray-700"
-            >
-              {text.rainfall}
-            </label>
+        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-green-800">
+                📍{" "}
+                {
+                  text.locationTitle
+                }
+              </h2>
 
-            <input
-              id="rainfall"
-              type="number"
-              name="rainfall"
-              min="0"
-              step="any"
-              value={form.rainfall}
-              onChange={handleChange}
-              placeholder={text.rainfallPlaceholder}
-              className="mt-2 w-full rounded-xl border-2 border-green-300 p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
+              <p className="mt-1 text-sm text-gray-600">
+                {weatherLoading
+                  ? text.locating
+                  : weatherData.location ||
+                    text
+                      .locationNotLoaded}
+              </p>
+            </div>
 
-          <div>
-            <label
-              htmlFor="temperature"
-              className="font-semibold text-gray-700"
-            >
-              {text.temperature}
-            </label>
-
-            <input
-              id="temperature"
-              type="number"
-              name="temperature"
-              min="-20"
-              max="60"
-              step="any"
-              value={form.temperature}
-              onChange={handleChange}
-              placeholder={
-                text.temperaturePlaceholder
+            <button
+              type="button"
+              onClick={
+                fetchCurrentWeather
               }
-              className="mt-2 w-full rounded-xl border-2 border-green-300 p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+              disabled={
+                weatherLoading
+              }
+              className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {weatherLoading
+                ? `⏳ ${text.locating}`
+                : weatherReady
+                  ? `🔄 ${text.refreshLocation}`
+                  : `📍 ${text.useLocation}`}
+            </button>
           </div>
+
+          {weatherReady && (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <p className="text-sm text-gray-500">
+                  🌧{" "}
+                  {text.rainfall}
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-cyan-700">
+                  {
+                    weatherData.rainfall
+                  }{" "}
+                  mm
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <p className="text-sm text-gray-500">
+                  🌡{" "}
+                  {
+                    text.temperature
+                  }
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-orange-700">
+                  {
+                    weatherData.temperature
+                  }{" "}
+                  °C
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={
+            loading ||
+            weatherLoading ||
+            !weatherReady
+          }
           className="mt-8 w-full rounded-xl bg-green-600 py-4 font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading
-            ? text.gettingRecommendation
+            ? text
+                .gettingRecommendation
             : `🌾 ${text.getRecommendation}`}
         </button>
       </div>
 
-      {loading && <LoadingSpinner />}
-
-      {!loading && !result && (
-        <div className="mt-16 text-center">
-          <div className="text-7xl">🌱</div>
-
-          <h2 className="mt-4 text-2xl font-bold text-gray-700">
-            {text.emptyTitle}
-          </h2>
-
-          <p className="mt-2 text-gray-500">
-            {text.emptyDescription}
-          </p>
+      {loading && (
+        <div className="mt-8">
+          <LoadingSpinner />
         </div>
       )}
 
-      {!loading && result && (
-        <div className="mx-auto mt-10 max-w-5xl space-y-6">
-          <div className="rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
-            <h2 className="text-3xl font-bold text-green-700 sm:text-4xl">
-              🌾 {result.recommendedCrop}
+      {!loading &&
+        !result && (
+          <div className="mt-16 text-center">
+            <div className="text-7xl">
+              🌱
+            </div>
+
+            <h2 className="mt-4 text-2xl font-bold text-gray-700">
+              {text.emptyTitle}
             </h2>
 
-            <p className="mt-4 text-lg font-semibold text-green-600 sm:text-xl">
-              ⭐ {text.confidence}:{" "}
-              {result.confidence}
+            <p className="mt-2 text-gray-500">
+              {
+                text.emptyDescription
+              }
             </p>
           </div>
+        )}
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="mb-4 text-2xl font-bold text-green-700">
-                📝 {text.whyCrop}
-              </h3>
+      {!loading &&
+        result && (
+          <div className="mx-auto mt-10 max-w-5xl space-y-6">
+            <div className="rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
+              <h2 className="text-3xl font-bold text-green-700 sm:text-4xl">
+                🌾{" "}
+                {result
+                  .recommendedCrop ||
+                  result.crop ||
+                  "Recommended Crop"}
+              </h2>
 
-              <ul className="space-y-3">
-                {Array.isArray(result.reason) &&
-                  result.reason.map(
-                    (item, index) => (
-                      <li
-                        key={`${index}-${item}`}
-                        className="flex gap-2"
-                      >
-                        <span>✅</span>
-                        <span>{item}</span>
-                      </li>
-                    )
-                  )}
-              </ul>
+              {result.confidence && (
+                <p className="mt-4 text-lg font-semibold text-green-600 sm:text-xl">
+                  ⭐{" "}
+                  {
+                    text.confidence
+                  }
+                  :{" "}
+                  {
+                    result.confidence
+                  }
+                </p>
+              )}
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="mb-4 text-2xl font-bold text-blue-700">
-                🌿 {text.fertilizer}
-              </h3>
+            <div className="grid gap-6 md:grid-cols-2">
+              <ResultCard
+                title={`📝 ${text.whyCrop}`}
+                value={
+                  result.reason ||
+                  result.reasons
+                }
+                listIcon="✅"
+                titleClass="text-green-700"
+              />
 
-              <p className="leading-8">
-                {result.fertilizer}
-              </p>
+              <ResultCard
+                title={`🌿 ${text.fertilizer}`}
+                value={
+                  result.fertilizer
+                }
+                titleClass="text-blue-700"
+              />
+
+              <ResultCard
+                title={`🧪 ${text.pesticide}`}
+                value={
+                  result.pesticide
+                }
+                titleClass="text-red-700"
+              />
+
+              <ResultCard
+                title={`💧 ${text.irrigation}`}
+                value={
+                  result.irrigation
+                }
+                titleClass="text-cyan-700"
+              />
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="mb-4 text-2xl font-bold text-red-700">
-                🧪 {text.pesticide}
-              </h3>
+            <ResultCard
+              title={`📈 ${text.expectedYield}`}
+              value={
+                result.expectedYield
+              }
+              titleClass="text-purple-700"
+            />
 
-              <p className="leading-8">
-                {result.pesticide}
-              </p>
-            </div>
+            <ResultCard
+              title={`💡 ${text.farmingTips}`}
+              value={
+                result.tips
+              }
+              listIcon="🌱"
+              titleClass="text-orange-700"
+            />
 
-            <div className="rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="mb-4 text-2xl font-bold text-cyan-700">
-                💧 {text.irrigation}
-              </h3>
-
-              <p className="leading-8">
-                {result.irrigation}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-2xl font-bold text-purple-700">
-              📈 {text.expectedYield}
-            </h3>
-
-            <p className="text-lg">
-              {result.expectedYield}
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-2xl font-bold text-orange-700">
-              💡 {text.farmingTips}
-            </h3>
-
-            <ul className="space-y-3">
-              {Array.isArray(result.tips) &&
-                result.tips.map(
-                  (tip, index) => (
-                    <li
-                      key={`${index}-${tip}`}
-                      className="flex gap-2"
-                    >
-                      <span>🌱</span>
-                      <span>{tip}</span>
-                    </li>
-                  )
-                )}
-            </ul>
-          </div>
-
-          {result.narration && (
-            <div className="rounded-2xl border-l-4 border-green-700 bg-green-100 p-6">
-              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-xl font-bold">
-                  🔊 {text.aiSummary}
-                </h3>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={handleListen}
-                    disabled={
-                      !voiceResponsesEnabled
+            {result.narration && (
+              <div className="rounded-2xl border-l-4 border-green-700 bg-green-100 p-6">
+                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-xl font-bold">
+                    🔊{" "}
+                    {
+                      text.aiSummary
                     }
-                    className="rounded-lg bg-green-600 px-5 py-2 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                  >
-                    {voiceResponsesEnabled
-                      ? `🔊 ${text.listen}`
-                      : `🔇 ${text.voiceOff}`}
-                  </button>
+                  </h3>
 
-                  <button
-                    type="button"
-                    onClick={handleStopReading}
-                    className="rounded-lg bg-red-600 px-5 py-2 font-semibold text-white transition hover:bg-red-700"
-                  >
-                    ⏹ {text.stop}
-                  </button>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={
+                        handleListen
+                      }
+                      disabled={
+                        !voiceResponsesEnabled
+                      }
+                      className="rounded-lg bg-green-600 px-5 py-2 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                    >
+                      {voiceResponsesEnabled
+                        ? `🔊 ${text.listen}`
+                        : `🔇 ${text.voiceOff}`}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        handleStopReading
+                      }
+                      className="rounded-lg bg-red-600 px-5 py-2 font-semibold text-white transition hover:bg-red-700"
+                    >
+                      ⏹{" "}
+                      {text.stop}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <p className="whitespace-pre-wrap leading-8">
-                {result.narration}
-              </p>
-            </div>
+                <p className="whitespace-pre-wrap leading-8">
+                  {
+                    result.narration
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+    </div>
+  );
+}
+
+function ResultCard({
+  title,
+  value,
+  listIcon = "•",
+  titleClass =
+    "text-gray-700",
+}) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-2xl bg-white p-6 shadow-xl">
+      <h3
+        className={`mb-4 text-2xl font-bold ${titleClass}`}
+      >
+        {title}
+      </h3>
+
+      {Array.isArray(value) ? (
+        <ul className="space-y-3">
+          {value.map(
+            (item, index) => (
+              <li
+                key={`${index}-${item}`}
+                className="flex gap-2"
+              >
+                <span>
+                  {listIcon}
+                </span>
+
+                <span>
+                  {item}
+                </span>
+              </li>
+            )
           )}
-        </div>
+        </ul>
+      ) : (
+        <p className="whitespace-pre-wrap leading-8">
+          {String(value)}
+        </p>
       )}
     </div>
   );

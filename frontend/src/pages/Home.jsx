@@ -1,8 +1,8 @@
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
-import Stats from "../components/Stats";
 import Features from "../components/Features";
 import HowItWorks from "../components/HowItWorks";
+import Stats from "../components/Stats";
 import Footer from "../components/Footer";
 
 function Home() {
@@ -10,9 +10,9 @@ function Home() {
     <>
       <Navbar />
       <Hero />
-      <Stats />
       <Features />
       <HowItWorks />
+      <Stats />
       <Footer />
     </>
   );

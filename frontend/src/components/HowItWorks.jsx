@@ -1,55 +1,71 @@
-import { Search, Brain, BarChart3 } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowRight, LayoutDashboard, LogIn, UserPlus } from "lucide-react";
+
+const steps = [
+  { number: "01", icon: UserPlus, title: "Create Your Account", description: "Register with your details to create a secure AgriSense account." },
+  { number: "02", icon: LogIn, title: "Login Securely", description: "Sign in with your account credentials to access protected features." },
+  { number: "03", icon: LayoutDashboard, title: "Use the Dashboard", description: "Access weather, market prices, crop AI, disease detection, and the AI assistant." },
+];
 
 function HowItWorks() {
-  const steps = [
-    {
-      icon: <Search size={40} className="text-green-600" />,
-      title: "Enter Farm Details",
-      description:
-        "Provide information like soil type, crop, season, and location.",
-    },
-    {
-      icon: <Brain size={40} className="text-green-600" />,
-      title: "AI Analysis",
-      description:
-        "AgriSense analyzes your data using AI along with weather insights.",
-    },
-    {
-      icon: <BarChart3 size={40} className="text-green-600" />,
-      title: "Get Smart Recommendations",
-      description:
-        "Receive personalized suggestions for crops, irrigation, and fertilizers.",
-    },
-  ];
-
   return (
-    <section id="how-it-works" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-6">
-        <h2 className="text-4xl font-bold text-center text-gray-900">
-          How AgriSense Works
-        </h2>
+    <section id="how-it-works" className="relative overflow-hidden bg-white py-20 sm:py-24">
+      <div className="mx-auto max-w-7xl px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mx-auto max-w-3xl text-center"
+        >
+          <span className="rounded-full border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700">
+            Secure Access Flow
+          </span>
 
-        <p className="text-center text-gray-600 mt-4">
-          Three simple steps to make better farming decisions.
-        </p>
+          <h2 className="mt-5 text-4xl font-black text-slate-900 sm:text-5xl">
+            How AgriSense Works
+          </h2>
 
-        <div className="grid md:grid-cols-3 gap-10 mt-14">
-          {steps.map((step, index) => (
-            <div
-              key={index}
-              className="text-center p-8 rounded-2xl border hover:shadow-lg transition"
-            >
-              <div className="flex justify-center">{step.icon}</div>
+          <p className="mt-5 text-lg leading-8 text-slate-600">
+            Create an account, login securely, and then use all tools from
+            one protected dashboard.
+          </p>
+        </motion.div>
 
-              <h3 className="text-xl font-semibold mt-6">
-                {step.title}
-              </h3>
+        <div className="relative mt-16 grid gap-8 md:grid-cols-3">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
 
-              <p className="mt-3 text-gray-600">
-                {step.description}
-              </p>
-            </div>
-          ))}
+            return (
+              <motion.div
+                key={step.number}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.15 }}
+                className="relative rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-[0_20px_45px_-25px_rgba(15,23,42,0.25)]"
+              >
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-600 to-emerald-500 text-white shadow-lg">
+                  <Icon size={30} />
+                </div>
+
+                <div className="mx-auto mt-5 flex h-10 w-10 items-center justify-center rounded-full bg-green-700 text-sm font-bold text-white">
+                  {step.number}
+                </div>
+
+                <h3 className="mt-6 text-2xl font-bold text-slate-900">
+                  {step.title}
+                </h3>
+
+                <p className="mt-4 leading-7 text-slate-600">
+                  {step.description}
+                </p>
+
+                {index < steps.length - 1 && (
+                  <ArrowRight size={20} className="mx-auto mt-6 text-green-600" />
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

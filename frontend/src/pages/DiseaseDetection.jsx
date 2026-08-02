@@ -34,7 +34,7 @@ const translations = {
     symptoms: "Symptoms",
     treatment: "Treatment",
     prevention: "Prevention",
-    aiSummary: "AI Summary",
+    aiSummary: "Farmer Recommendation",
 
     listen: "Listen",
     stop: "Stop",
@@ -77,7 +77,7 @@ const translations = {
     symptoms: "లక్షణాలు",
     treatment: "చికిత్స",
     prevention: "నివారణ",
-    aiSummary: "AI సారాంశం",
+    aiSummary: "రైతు సిఫార్సు",
 
     listen: "వినండి",
     stop: "ఆపండి",
@@ -121,7 +121,7 @@ const translations = {
     symptoms: "लक्षण",
     treatment: "उपचार",
     prevention: "रोकथाम",
-    aiSummary: "AI सारांश",
+    aiSummary: "किसान सुझाव",
 
     listen: "सुनें",
     stop: "रोकें",
@@ -165,7 +165,7 @@ const translations = {
     symptoms: "அறிகுறிகள்",
     treatment: "சிகிச்சை",
     prevention: "தடுப்பு",
-    aiSummary: "AI சுருக்கம்",
+    aiSummary: "விவசாயி பரிந்துரை",
 
     listen: "கேட்க",
     stop: "நிறுத்து",
@@ -209,7 +209,7 @@ const translations = {
     symptoms: "ಲಕ್ಷಣಗಳು",
     treatment: "ಚಿಕಿತ್ಸೆ",
     prevention: "ತಡೆಗಟ್ಟುವಿಕೆ",
-    aiSummary: "AI ಸಾರಾಂಶ",
+    aiSummary: "ರೈತ ಶಿಫಾರಸು",
 
     listen: "ಆಲಿಸಿ",
     stop: "ನಿಲ್ಲಿಸಿ",
@@ -253,7 +253,7 @@ const translations = {
     symptoms: "ലക്ഷണങ്ങൾ",
     treatment: "ചികിത്സ",
     prevention: "പ്രതിരോധം",
-    aiSummary: "AI സംഗ്രഹം",
+    aiSummary: "കർഷക നിർദേശം",
 
     listen: "കേൾക്കുക",
     stop: "നിർത്തുക",
@@ -278,6 +278,54 @@ const translations = {
 
 const MAX_IMAGE_SIZE =
   5 * 1024 * 1024;
+
+const getConfidenceValue = (value) => {
+  const match = String(value || "").match(/\d+(?:\.\d+)?/);
+
+  if (!match) {
+    return 0;
+  }
+
+  const numericValue = Number(match[0]);
+
+  if (!Number.isFinite(numericValue)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, numericValue));
+};
+
+const getConfidenceStyles = (value) => {
+  const confidence = getConfidenceValue(value);
+
+  if (confidence >= 90) {
+    return {
+      labelClass: "text-green-700",
+      barClass: "bg-green-600",
+      trackClass: "bg-green-100",
+      badgeClass:
+        "border-green-200 bg-green-100 text-green-800",
+    };
+  }
+
+  if (confidence >= 70) {
+    return {
+      labelClass: "text-yellow-700",
+      barClass: "bg-yellow-500",
+      trackClass: "bg-yellow-100",
+      badgeClass:
+        "border-yellow-200 bg-yellow-100 text-yellow-800",
+    };
+  }
+
+  return {
+    labelClass: "text-red-700",
+    barClass: "bg-red-500",
+    trackClass: "bg-red-100",
+    badgeClass:
+      "border-red-200 bg-red-100 text-red-800",
+  };
+};
 
 function DiseaseDetection() {
   const [image, setImage] =
@@ -430,8 +478,28 @@ function DiseaseDetection() {
     window.speechSynthesis?.cancel();
   };
 
+  const confidenceValue =
+    getConfidenceValue(result?.confidence);
+
+  const confidenceStyles =
+    getConfidenceStyles(result?.confidence);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-lime-50 to-yellow-50 p-4 sm:p-8">
+      <style>
+        {`
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(18px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
       <h1 className="mb-3 text-center text-3xl font-bold text-green-700 sm:text-5xl">
         🌿 {text.pageTitle}
       </h1>
@@ -462,7 +530,7 @@ function DiseaseDetection() {
             <img
               src={preview}
               alt={text.previewAlt}
-              className="h-72 w-72 rounded-2xl border-4 border-green-200 object-cover shadow-lg"
+              className="h-72 w-72 rounded-2xl border-4 border-green-200 object-cover shadow-lg transition duration-500 hover:scale-[1.02] hover:shadow-2xl"
             />
           </div>
         )}
@@ -474,7 +542,7 @@ function DiseaseDetection() {
           className="mt-8 w-full rounded-xl bg-green-600 py-4 font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading
-            ? text.detectingDisease
+            ? `⏳ ${text.detectingDisease}`
             : `🔍 ${text.detectDisease}`}
         </button>
       </div>
@@ -498,33 +566,59 @@ function DiseaseDetection() {
       )}
 
       {!loading && result && (
-        <div className="mx-auto mt-10 max-w-3xl rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
+        <div className="mx-auto mt-10 max-w-3xl animate-[fadeIn_500ms_ease-out] rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
           <h2 className="mb-8 text-center text-3xl font-bold text-green-700 sm:text-4xl">
             🌾 {text.resultTitle}
           </h2>
 
           <div className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-2xl bg-green-50 p-5">
-              <h3 className="mb-2 font-bold text-green-700">
-                🌿 {text.disease}
+            <div className="rounded-2xl bg-green-50 p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+              <h3 className="mb-3 font-bold text-green-700">
+                🍃 {text.disease}
               </h3>
 
-              <p className="leading-7">
-                {result.disease}
+              <span className="inline-flex rounded-full border border-green-200 bg-white px-4 py-2 font-semibold text-green-800 shadow-sm">
+                🦠 {result.disease}
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-blue-50 p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+              <div className="mb-3 flex items-center justify-between gap-4">
+                <h3 className="font-bold text-blue-700">
+                  📊 {text.confidence}
+                </h3>
+
+                <span
+                  className={`rounded-full border px-3 py-1 text-sm font-bold ${confidenceStyles.badgeClass}`}
+                >
+                  {result.confidence}
+                </span>
+              </div>
+
+              <div
+                className={`h-3 overflow-hidden rounded-full ${confidenceStyles.trackClass}`}
+                aria-label={`${text.confidence}: ${result.confidence}`}
+              >
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${confidenceStyles.barClass}`}
+                  style={{
+                    width: `${confidenceValue}%`,
+                  }}
+                />
+              </div>
+
+              <p
+                className={`mt-3 text-sm font-semibold ${confidenceStyles.labelClass}`}
+              >
+                {confidenceValue >= 90
+                  ? "High confidence"
+                  : confidenceValue >= 70
+                    ? "Moderate confidence"
+                    : "Low confidence"}
               </p>
             </div>
 
-            <div className="rounded-2xl bg-blue-50 p-5">
-              <h3 className="mb-2 font-bold text-blue-700">
-                📊 {text.confidence}
-              </h3>
-
-              <p className="leading-7">
-                {result.confidence}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-yellow-50 p-5 md:col-span-2">
+            <div className="rounded-2xl bg-yellow-50 p-5 transition duration-300 hover:shadow-lg md:col-span-2">
               <h3 className="mb-2 font-bold text-yellow-700">
                 🔍 {text.cause}
               </h3>
@@ -535,7 +629,7 @@ function DiseaseDetection() {
             </div>
 
             {result.symptoms && (
-              <div className="rounded-2xl bg-orange-50 p-5 md:col-span-2">
+              <div className="rounded-2xl bg-orange-50 p-5 transition duration-300 hover:shadow-lg md:col-span-2">
                 <h3 className="mb-2 font-bold text-orange-700">
                   🩺 {text.symptoms}
                 </h3>
@@ -566,7 +660,7 @@ function DiseaseDetection() {
               </div>
             )}
 
-            <div className="rounded-2xl bg-red-50 p-5 md:col-span-2">
+            <div className="rounded-2xl bg-red-50 p-5 transition duration-300 hover:shadow-lg md:col-span-2">
               <h3 className="mb-2 font-bold text-red-700">
                 💊 {text.treatment}
               </h3>
@@ -576,7 +670,7 @@ function DiseaseDetection() {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-green-100 p-5 md:col-span-2">
+            <div className="rounded-2xl bg-green-100 p-5 transition duration-300 hover:shadow-lg md:col-span-2">
               <h3 className="mb-2 font-bold text-green-800">
                 🛡 {text.prevention}
               </h3>
@@ -588,10 +682,10 @@ function DiseaseDetection() {
           </div>
 
           {result.narration && (
-            <div className="mt-6 rounded-2xl border-l-4 border-green-700 bg-green-100 p-5">
+            <div className="mt-6 rounded-2xl border-l-4 border-green-700 bg-green-100 p-5 shadow-inner transition duration-300 hover:shadow-lg">
               <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-xl font-bold text-green-800">
-                  🔊 {text.aiSummary}
+                  🌾 {text.aiSummary}
                 </h3>
 
                 <div className="flex flex-wrap gap-3">

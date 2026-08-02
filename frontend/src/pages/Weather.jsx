@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { getWeather } from "../services/weatherService";
+import {
+  getWeather,
+  getWeatherByLocation,
+  getForecast,
+} from "../services/weatherService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { speakText } from "../utils/speech";
 import { useSettings } from "../context/SettingsContext";
@@ -260,6 +264,77 @@ const translations = {
   },
 };
 
+const forecastTranslations = {
+  "en-IN": {
+    title: "5-Day Weather Forecast",
+    min: "Min",
+    max: "Max",
+    humidity: "Humidity",
+    rain: "Rain",
+    loading: "Loading forecast...",
+    unavailable: "Forecast is not available.",
+  },
+  "te-IN": {
+    title: "5 రోజుల వాతావరణ సూచన",
+    min: "కనిష్ఠం",
+    max: "గరిష్ఠం",
+    humidity: "తేమ",
+    rain: "వర్షం",
+    loading: "వాతావరణ సూచన లోడ్ అవుతోంది...",
+    unavailable: "వాతావరణ సూచన అందుబాటులో లేదు.",
+  },
+  "hi-IN": {
+    title: "5 दिनों का मौसम पूर्वानुमान",
+    min: "न्यूनतम",
+    max: "अधिकतम",
+    humidity: "नमी",
+    rain: "बारिश",
+    loading: "मौसम पूर्वानुमान लोड हो रहा है...",
+    unavailable: "मौसम पूर्वानुमान उपलब्ध नहीं है।",
+  },
+  "ta-IN": {
+    title: "5 நாள் வானிலை முன்னறிவிப்பு",
+    min: "குறைந்த",
+    max: "அதிக",
+    humidity: "ஈரப்பதம்",
+    rain: "மழை",
+    loading: "வானிலை முன்னறிவிப்பு ஏற்றப்படுகிறது...",
+    unavailable: "வானிலை முன்னறிவிப்பு கிடைக்கவில்லை.",
+  },
+  "kn-IN": {
+    title: "5 ದಿನಗಳ ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ",
+    min: "ಕನಿಷ್ಠ",
+    max: "ಗರಿಷ್ಠ",
+    humidity: "ಆರ್ದ್ರತೆ",
+    rain: "ಮಳೆ",
+    loading: "ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    unavailable: "ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ ಲಭ್ಯವಿಲ್ಲ.",
+  },
+  "ml-IN": {
+    title: "5 ദിവസത്തെ കാലാവസ്ഥാ പ്രവചനം",
+    min: "കുറഞ്ഞ",
+    max: "കൂടിയ",
+    humidity: "ഈർപ്പം",
+    rain: "മഴ",
+    loading: "കാലാവസ്ഥാ പ്രവചനം ലോഡ് ചെയ്യുന്നു...",
+    unavailable: "കാലാവസ്ഥാ പ്രവചനം ലഭ്യമല്ല.",
+  },
+};
+
+function formatForecastDate(date, language) {
+  const parsedDate = new Date(`${date}T12:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return date;
+  }
+
+  return new Intl.DateTimeFormat(language || "en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(parsedDate);
+}
+
 const weatherConditionTranslations = {
   clear: {
     "en-IN": "Clear",
@@ -441,15 +516,187 @@ function translateWeatherValue(value, language, dictionary) {
 }
 
 function Weather() {
-  const [city, setCity] = useState("Hyderabad");
+  const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
+  const [forecast, setForecast] = useState([]);
+  const [forecastLoading, setForecastLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] =
+    useState(false);
+  const [usingCurrentLocation, setUsingCurrentLocation] =
+    useState(false);
 
   const { language, voiceResponsesEnabled } = useSettings();
 
   const text =
     translations[language] ||
     translations["en-IN"];
+
+  const forecastText =
+    forecastTranslations[language] ||
+    forecastTranslations["en-IN"];
+
+  const speakWeatherSummary = (data) => {
+    const summary = data?.aiAdvice?.summary;
+
+    if (
+      voiceResponsesEnabled &&
+      summary
+    ) {
+      speakText(summary, language);
+    }
+  };
+
+  const fetchForecastData = async (
+    latitude,
+    longitude
+  ) => {
+    try {
+      setForecastLoading(true);
+
+      const response = await getForecast(
+        latitude,
+        longitude,
+        language
+      );
+
+      setForecast(
+        Array.isArray(response?.forecast)
+          ? response.forecast
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Forecast fetch error:",
+        error
+      );
+
+      setForecast([]);
+
+      toast.error(
+        error?.response?.data?.message ||
+          forecastText.unavailable
+      );
+    } finally {
+      setForecastLoading(false);
+    }
+  };
+
+  const fetchCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error(
+        "Location is not supported by this browser."
+      );
+      return;
+    }
+
+    setLocationLoading(true);
+    window.speechSynthesis?.cancel();
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } =
+            position.coords;
+
+          const data =
+            await getWeatherByLocation(
+              latitude,
+              longitude,
+              language
+            );
+
+          const currentLocation = String(
+            data?.localizedCity ||
+              data?.city ||
+              "Current Location"
+          ).trim();
+
+          localStorage.setItem(
+            "agrisenseCurrentLocation",
+            currentLocation
+          );
+
+          const normalizedWeather = {
+            ...data,
+            city: currentLocation,
+            localizedCity: currentLocation,
+          };
+
+          setWeather(normalizedWeather);
+          setCity(currentLocation);
+          setUsingCurrentLocation(true);
+
+          await fetchForecastData(
+            data.latitude ?? latitude,
+            data.longitude ?? longitude
+          );
+
+          toast.success(
+            "Current location weather updated"
+          );
+
+          speakWeatherSummary(data);
+        } catch (error) {
+          console.error(
+            "Current location weather error:",
+            error
+          );
+
+          toast.error(
+            error?.response?.data?.message ||
+              "Unable to fetch weather for your current location"
+          );
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      (error) => {
+        console.error(
+          "Geolocation error:",
+          error
+        );
+
+        setLocationLoading(false);
+
+        if (error.code === 1) {
+          toast.error(
+            "Location permission was denied. Search by city or allow location access."
+          );
+          return;
+        }
+
+        if (error.code === 2) {
+          toast.error(
+            "Your current location is unavailable."
+          );
+          return;
+        }
+
+        if (error.code === 3) {
+          toast.error(
+            "Location request timed out. Please try again."
+          );
+          return;
+        }
+
+        toast.error(
+          "Unable to detect your current location."
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  useEffect(() => {
+    fetchCurrentLocation();
+    // Run once when the weather page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchWeather = async () => {
     const cleanCity = city.trim();
@@ -471,16 +718,16 @@ function Weather() {
 
       setWeather(data);
 
+      await fetchForecastData(
+        data.latitude,
+        data.longitude
+      );
+
       toast.success(text.weatherUpdated);
 
-      const summary = data?.aiAdvice?.summary;
+      setUsingCurrentLocation(false);
 
-      if (
-        voiceResponsesEnabled &&
-        summary
-      ) {
-        speakText(summary, language);
-      }
+      speakWeatherSummary(data);
     } catch (error) {
       console.error(
         "Weather fetch error:",
@@ -522,7 +769,8 @@ function Weather() {
   const handleKeyDown = (event) => {
     if (
       event.key === "Enter" &&
-      !loading
+      !loading &&
+      !locationLoading
     ) {
       fetchWeather();
     }
@@ -557,29 +805,55 @@ function Weather() {
           type="text"
           placeholder={text.cityPlaceholder}
           value={city}
-          onChange={(event) =>
-            setCity(event.target.value)
-          }
+          onChange={(event) => {
+            setCity(event.target.value);
+            setUsingCurrentLocation(false);
+          }}
           onKeyDown={handleKeyDown}
-          disabled={loading}
+          disabled={loading || locationLoading}
           className="w-full rounded-xl border-2 border-green-300 px-5 py-3 outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-gray-100 md:w-96"
         />
 
         <button
           type="button"
           onClick={fetchWeather}
-          disabled={loading}
+          disabled={loading || locationLoading}
           className="rounded-xl bg-green-600 px-8 py-3 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading
             ? text.searching
             : text.search}
         </button>
+
+        <button
+          type="button"
+          onClick={fetchCurrentLocation}
+          disabled={loading || locationLoading}
+          className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {locationLoading
+            ? "📍 Detecting..."
+            : "📍 Use Current Location"}
+        </button>
       </div>
 
-      {loading && <LoadingSpinner />}
+      {usingCurrentLocation && weather && (
+        <div className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">
+          <span>📍</span>
+          <span>
+            Using current location: {
+              weather.localizedCity ||
+              weather.city
+            }
+          </span>
+        </div>
+      )}
 
-      {!loading && !weather && (
+      {(loading || locationLoading) && (
+        <LoadingSpinner />
+      )}
+
+      {!loading && !locationLoading && !weather && (
         <div className="mt-16 text-center">
           <div className="mb-5 text-7xl">
             🌤
@@ -595,11 +869,14 @@ function Weather() {
         </div>
       )}
 
-      {!loading && weather && (
+      {!loading && !locationLoading && weather && (
         <>
           <div className="mx-auto max-w-xl rounded-3xl bg-white p-6 shadow-xl transition hover:shadow-2xl sm:p-10">
             <h2 className="mb-8 text-center text-3xl font-bold text-green-700 sm:text-4xl">
-              📍 {weather.city}
+              📍 {
+                weather.localizedCity ||
+                weather.city
+              }
             </h2>
 
             <div className="space-y-5 text-base sm:text-lg">
@@ -654,6 +931,97 @@ function Weather() {
               </div>
             </div>
           </div>
+
+
+          <section className="mx-auto mt-8 max-w-6xl rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
+            <h2 className="mb-8 text-center text-3xl font-bold text-green-700 sm:text-4xl">
+              📅 {forecastText.title}
+            </h2>
+
+            {forecastLoading ? (
+              <p className="py-8 text-center font-medium text-gray-600">
+                {forecastText.loading}
+              </p>
+            ) : forecast.length > 0 ? (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+                {forecast.map((day) => (
+                  <article
+                    key={day.date}
+                    className="rounded-2xl border border-green-100 bg-gradient-to-b from-blue-50 to-green-50 p-5 text-center shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <p className="font-bold text-green-800">
+                      {formatForecastDate(
+                        day.date,
+                        language
+                      )}
+                    </p>
+
+                    <div className="my-4 text-5xl">
+                      {day.icon || "🌤️"}
+                    </div>
+
+                    <p className="min-h-12 font-semibold capitalize text-gray-700">
+                      {day.description ||
+                        day.condition}
+                    </p>
+
+                    <p className="mt-3 text-3xl font-bold text-gray-900">
+                      {day.temperature ?? "--"}
+                      °C
+                    </p>
+
+                    <div className="mt-4 space-y-2 text-sm text-gray-700">
+                      <div className="flex justify-between gap-2">
+                        <span>
+                          🔻 {forecastText.min}
+                        </span>
+                        <strong>
+                          {day.minimumTemperature ??
+                            "--"}
+                          °C
+                        </strong>
+                      </div>
+
+                      <div className="flex justify-between gap-2">
+                        <span>
+                          🔺 {forecastText.max}
+                        </span>
+                        <strong>
+                          {day.maximumTemperature ??
+                            "--"}
+                          °C
+                        </strong>
+                      </div>
+
+                      <div className="flex justify-between gap-2">
+                        <span>
+                          💧 {forecastText.humidity}
+                        </span>
+                        <strong>
+                          {day.humidity ?? "--"}%
+                        </strong>
+                      </div>
+
+                      <div className="flex justify-between gap-2">
+                        <span>
+                          🌧️ {forecastText.rain}
+                        </span>
+                        <strong>
+                          {day.rainProbability ??
+                            0}
+                          %
+                        </strong>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="py-8 text-center font-medium text-gray-600">
+                {forecastText.unavailable}
+              </p>
+            )}
+          </section>
 
           {weather.aiAdvice && (
             <div className="mx-auto mt-8 max-w-5xl rounded-3xl bg-white p-5 shadow-2xl sm:p-8">

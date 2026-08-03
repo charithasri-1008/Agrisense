@@ -693,10 +693,15 @@ function Weather() {
   };
 
   useEffect(() => {
-    fetchCurrentLocation();
-    // Run once when the weather page opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  fetchCurrentLocation();
+
+  return () => {
+    // Stop voice when leaving the Weather page
+    window.speechSynthesis.cancel();
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   const fetchWeather = async () => {
     const cleanCity = city.trim();

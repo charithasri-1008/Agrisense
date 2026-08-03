@@ -676,9 +676,13 @@ function CropRecommendation() {
   );
 
   useEffect(() => {
+  window.speechSynthesis?.cancel();
+  setResult(null);
+
+  return () => {
     window.speechSynthesis?.cancel();
-    setResult(null);
-  }, [language]);
+  };
+}, [language]);
 
   const handleChange = (
     event

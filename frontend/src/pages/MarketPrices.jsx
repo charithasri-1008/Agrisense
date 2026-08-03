@@ -811,11 +811,15 @@ function MarketPrices() {
     );
   }, [language]);
 
-  useEffect(() => {
-    setPrices([]);
-    setSelectedDistrict("");
-    setHasSearched(false);
-  }, [language]);
+ useEffect(() => {
+  setPrices([]);
+  setSelectedDistrict("");
+  setHasSearched(false);
+
+  return () => {
+    window.speechSynthesis?.cancel();
+  };
+}, [language]);
 
   const getLocalizedLabel = (option) => {
     return (
